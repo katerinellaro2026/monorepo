@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>InmoData IA — Centro de Comando CEO</title>
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0c0e16;color:#e2e8f0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:#13161f}
+::-webkit-scrollbar-thumb{background:#2d3148;border-radius:3px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes growBar{from{width:0}to{width:var(--w)}}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const {useState, useEffect, useRef} = React;
+const {
+  BarChart, Bar, LineChart, Line,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} = Recharts;
+
+/* ── Design tokens ── */
+const S = {
+  wrap: { background: '#0c0e16', minHeight: '100vh', padding: '22px 24px' },
+  card: { background: '#141720', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '18px' },
+  cardAccent: (c) => ({ background: '#141720', border: `1px solid ${c}33`, borderRadius: '12px', padding: '18px' }),
+  label: { fontSize: '11px', color: '#64748b', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: '500' },
+  val: { fontSize: '26px', fontWeight: '700', color: '#f1f5f9', letterSpacing: '-0.5px', lineHeight: '1' },
+  change: (up) => ({ fontSize: '11px', color: up ? '#22c55e' : '#f43f5e', marginTop: '7px', display: 'flex', alignItems: 'center', gap: '3px' }),
+  grid2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '13px' },
+  grid4: { display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '13px' },
+  pill: (bg, c, b) => ({ background: bg, color: c, border: `0.5px solid ${b}`, borderRadius: '20px', padding: '2px 9px', fontSize: '10.5px', fontWeight: '600', display: 'inline-block' }),
+  badge: (bg, c, b) => ({ background: bg, color: c, border: `0.5px solid ${b}`, borderRadius: '5px', padding: '1px 8px', fontSize: '10px', fontWeight: '700', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'inline-block' }),
+  iconWrap: (bg) => ({ width: '36px', height: '36px', background: bg, borderRadius: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }),
+  sectionLabel: { fontSize: '10px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.09em', color: '#475569', marginBottom: '13px', display: 'flex', alignItems: 'center', gap: '10px' },
+  progressWrap: { background: 'rgba(255,255,255,0.06)', borderRadius: '4px', height: '6px', overflow: 'hidden', marginTop: '8px' },
+  insightCard: { background: '#141720', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '14px', borderLeft: '3px solid #6366f1' },
+};
+
+const ttStyle = { backgroundColor: '#1a1d2e', border: '0.5px solid rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px', color: '#e2e8f0', padding: '8px 12px' };
+
+/* ── Reusable atoms ── */
+const Dot = ({ color = '#22c55e' }) =>
+  React.createElement('span', {
+    style: { display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', background: color, marginRight: '5px', animation: 'pulse 2s infinite', verticalAlign: 'middle' }
+  });
+
+const StatusBadge = ({ ok = true, label }) =>
+  React.createElement('span', {
+    style: S.badge(ok ? 'rgba(34,197,94,0.12)' : 'rgba(244,63,94,0.12)', ok ? '#22c55e' : '#f43f5e', ok ? 'rgba(34,197,94,0.3)' : 'rgba(244,63,94,0.3)')
+  }, (ok ? '● ' : '✕ ') + label);
+
+const SectionLine = ({ children }) =>
+  React.createElement('div', { style: S.sectionLabel },
+    children,
+    React.createElement('span', { style: { flex: 1, height: '0.5px', background: 'rgba(255,255,255,0.06)' } })
+  );
+
+const ProgressBar = ({ label, sublabel, pct, color }) =>
+  React.createElement('div', { style: { marginBottom: '10px' } },
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', marginBottom: '4px' } },
+      React.createElement('span', { style: { fontSize: '11.5px', color: '#94a3b8' } }, label),
+      React.createElement('span', { style: { fontSize: '12px', fontWeight: '600', color: '#f1f5f9' } }, sublabel)
+    ),
+    React.createElement('div', { style: S.progressWrap },
+      React.createElement('div', { style: { width: pct + '%', height: '100%', background: color, borderRadius: '4px', transition: 'width 1s ease' } })
+    )
+  );
+
+const KpiCard = ({ label, value, change, up, icon, accent = '#6366f1' }) =>
+  React.createElement('div', { style: { ...S.card, border: `0.5px solid ${accent}33` } },
+    React.createElement('div', { style: { ...S.iconWrap(accent + '18'), marginBottom: '12px' } },
+      React.createElement('span', { style: { fontSize: '17px' } }, icon)
+    ),
+    React.createElement('div', { style: S.label }, label),
+    React.createElement('div', { style: S.val }, value),
+    change && React.createElement('div', { style: S.change(up) }, up ? '▲' : '▼', ' ', change)
+  );
+
+/* ── Data ── */
+const revenueData = [
+  { mes: 'Ene', SaaS: 4200, Leads: 8250 },
+  { mes: 'Feb', SaaS: 4800, Leads: 9000 },
+  { mes: 'Mar', SaaS: 5400, Leads: 9800 },
+  { mes: 'Abr', SaaS: 6100, Leads: 11500 },
+  { mes: 'May', SaaS: 6800, Leads: 12100 },
+  { mes: 'Jun', SaaS: 7450, Leads: 12800 },
+];
+
+const txns = [
+  { id: '#0891', cliente: 'Inmobiliaria Pacífico',   tipo: 'Lead',        monto: 'S/ 320.00', fecha: '13 Jun', medio: '💳 T. Crédito',   tipoKey: 'lead' },
+  { id: '#0890', cliente: 'Carlos Mendoza',           tipo: 'Suscripción', monto: 'S/ 150.00', fecha: '12 Jun', medio: '🏦 Transferencia', tipoKey: 'saas' },
+  { id: '#0889', cliente: 'Grupo Habitat Perú',       tipo: 'Lead',        monto: 'S/ 480.00', fecha: '12 Jun', medio: '📱 Yape/Plin',     tipoKey: 'lead' },
+  { id: '#0888', cliente: 'Sofía Ríos Paredes',       tipo: 'Suscripción', monto: 'S/ 150.00', fecha: '11 Jun', medio: '💳 T. Crédito',   tipoKey: 'saas' },
+  { id: '#0887', cliente: 'Nexo Inmobiliario SAC',    tipo: 'Lead',        monto: 'S/ 640.00', fecha: '10 Jun', medio: '🏦 Transferencia', tipoKey: 'lead' },
+];
+
+const demandaOferta = [
+  { distrito: 'Lince',       demanda: 182000, oferta: 222000 },
+  { distrito: 'Jesús María', demanda: 241000, oferta: 298000 },
+  { distrito: 'Miraflores',  demanda: 385000, oferta: 441000 },
+];
+
+const radarData = [
+  { metric: 'Vol. búsqueda', Lince: 82, JesusMaria: 68, Miraflores: 55 },
+  { metric: 'Brecha precio', Lince: 90, JesusMaria: 74, Miraflores: 58 },
+  { metric: 'Conv. lead',    Lince: 45, JesusMaria: 62, Miraflores: 80 },
+  { metric: 'Recurrencia',   Lince: 60, JesusMaria: 55, Miraflores: 88 },
+  { metric: 'Urgencia',      Lince: 75, JesusMaria: 70, Miraflores: 65 },
+];
+
+const agents = [
+  {
+    id: 'Triaje', role: 'Orquestador', color: '#818cf8', icon: '🔀',
+    metrics: [
+      { label: 'Mensajes recibidos hoy', value: '4,821', pct: 78, pctColor: '#818cf8' },
+      { label: 'Precisión de enrutamiento', value: '96.4%', pct: 96, pctColor: '#22c55e' },
+    ]
+  },
+  {
+    id: 'Analista', role: 'RAG · Tasador', color: '#f59e0b', icon: '🔍',
+    metrics: [
+      { label: 'Tasaciones calculadas hoy', value: '1,247', pct: 62, pctColor: '#f59e0b' },
+      { label: 'Latencia vectorial promedio', value: '1.3 s', pct: 87, pctColor: '#22c55e' },
+    ]
+  },
+  {
+    id: 'Comercial', role: 'Cualificador', color: '#2dd4bf', icon: '💬',
+    metrics: [
+      { label: 'Tasa de extracción de datos', value: '34.6%', pct: 35, pctColor: '#2dd4bf' },
+      { label: 'Leads enviados a B2B hoy', value: '89', pct: 55, pctColor: '#6366f1' },
+    ]
+  },
+  {
+    id: 'Soporte B2B', role: 'Generador ACM', color: '#22c55e', icon: '📄',
+    metrics: [
+      { label: 'Reportes ACM generados hoy', value: '23', pct: 46, pctColor: '#22c55e' },
+      { label: 'Satisfacción corredor', value: '94.2%', pct: 94, pctColor: '#22c55e' },
+    ]
+  },
+];
+
+const insights = [
+  { text: 'El 65% de usuarios en Lince tiene un presupuesto S/ 40,000 por debajo de la oferta actual publicada.', tag: 'Brecha crítica', tagColor: '#f43f5e' },
+  { text: 'Microzona más solicitada hoy: Parque Castilla (Lince) con 182 consultas en las últimas 6 horas.', tag: 'Tendencia', tagColor: '#f59e0b' },
+  { text: 'Jesús María muestra la mayor tasa de intención de compra real: 71% declara plazo menor a 3 meses.', tag: 'Oportunidad', tagColor: '#22c55e' },
+  { text: 'Precio/m² en Miraflores subió 4.3% vs. semana anterior según scraping de Urbania (312 listados nuevos).', tag: 'Dato macro', tagColor: '#6366f1' },
+];
+
+/* ── Tab 1: B2B ── */
+function Tab1() {
+  return React.createElement('div', { style: { animation: 'fadeIn .3s ease' } },
+    React.createElement('div', { style: { ...S.grid4, marginBottom: '16px' } },
+      React.createElement(KpiCard, { label: 'MRR Suscripciones SaaS', value: 'S/ 7,450', change: '+12.4% vs. mes anterior', up: true, icon: '💳', accent: '#6366f1' }),
+      React.createElement(KpiCard, { label: 'Ingresos por Leads (CPL)', value: 'S/ 12,800', change: '+8.1% vs. mes anterior', up: true, icon: '🎯', accent: '#2dd4bf' }),
+      React.createElement(KpiCard, { label: 'Corredores activos', value: '62', change: '+7 incorporados este mes', up: true, icon: '🏢', accent: '#22c55e' }),
+      React.createElement(KpiCard, { label: 'Tasa de conversión', value: '18.3%', change: '-1.2% vs. mes anterior', up: false, icon: '📊', accent: '#f59e0b' }),
+    ),
+
+    React.createElement('div', { style: { ...S.card, marginBottom: '16px' } },
+      React.createElement('div', { style: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1', marginBottom: '3px' } }, 'Ingresos combinados — últimos 6 meses'),
+      React.createElement('div', { style: { fontSize: '11px', color: '#475569', marginBottom: '12px' } }, 'Desglose SaaS vs. Leads en Soles'),
+      React.createElement('div', { style: { display: 'flex', gap: '16px', marginBottom: '12px' } },
+        React.createElement('span', { style: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#94a3b8' } },
+          React.createElement('span', { style: { width: '10px', height: '10px', borderRadius: '2px', background: '#6366f1', display: 'inline-block' } }), ' Ingresos SaaS'
+        ),
+        React.createElement('span', { style: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#94a3b8' } },
+          React.createElement('span', { style: { width: '10px', height: '10px', borderRadius: '2px', background: '#2dd4bf', display: 'inline-block' } }), ' Ingresos por Leads'
+        ),
+      ),
+      React.createElement(ResponsiveContainer, { width: '100%', height: 220 },
+        React.createElement(BarChart, { data: revenueData, barSize: 20 },
+          React.createElement(CartesianGrid, { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.04)', vertical: false }),
+          React.createElement(XAxis, { dataKey: 'mes', tick: { fill: '#475569', fontSize: 11 }, axisLine: false, tickLine: false }),
+          React.createElement(YAxis, { tick: { fill: '#475569', fontSize: 10 }, axisLine: false, tickLine: false, tickFormatter: v => 'S/' + Math.round(v / 1000) + 'k' }),
+          React.createElement(Tooltip, { contentStyle: ttStyle, formatter: (v, n) => ['S/ ' + v.toLocaleString('es-PE'), n === 'SaaS' ? 'Ingresos SaaS' : 'Ingresos Leads'] }),
+          React.createElement(Bar, { dataKey: 'SaaS',  stackId: 'a', fill: '#6366f1', radius: [0, 0, 0, 0] }),
+          React.createElement(Bar, { dataKey: 'Leads', stackId: 'a', fill: '#2dd4bf', radius: [3, 3, 0, 0] }),
+        )
+      )
+    ),
+
+    React.createElement('div', { style: S.card },
+      React.createElement('div', { style: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1', marginBottom: '3px' } }, 'Transacciones recientes'),
+      React.createElement('div', { style: { fontSize: '11px', color: '#475569', marginBottom: '15px' } }, 'Últimas 5 operaciones registradas en la plataforma'),
+      React.createElement('div', { style: { overflowX: 'auto' } },
+        React.createElement('table', { style: { width: '100%', borderCollapse: 'collapse', fontSize: '12px', tableLayout: 'fixed' } },
+          React.createElement('colgroup', null,
+            React.createElement('col', { style: { width: '10%' } }),
+            React.createElement('col', { style: { width: '26%' } }),
+            React.createElement('col', { style: { width: '13%' } }),
+            React.createElement('col', { style: { width: '14%' } }),
+            React.createElement('col', { style: { width: '11%' } }),
+            React.createElement('col', { style: { width: '26%' } }),
+          ),
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              ['ID', 'Cliente', 'Tipo', 'Monto', 'Fecha', 'Medio de Pago'].map(h =>
+                React.createElement('th', { key: h, style: { textAlign: 'left', color: '#475569', fontWeight: '500', padding: '8px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.06)', fontSize: '10.5px', textTransform: 'uppercase', letterSpacing: '.05em', whiteSpace: 'nowrap' } }, h)
+              )
+            )
+          ),
+          React.createElement('tbody', null,
+            txns.map(t => React.createElement('tr', { key: t.id },
+              React.createElement('td', { style: { padding: '11px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', color: '#475569', fontSize: '10.5px' } }, t.id),
+              React.createElement('td', { style: { padding: '11px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', color: '#e2e8f0', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, t.cliente),
+              React.createElement('td', { style: { padding: '11px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.04)' } },
+                React.createElement('span', { style: t.tipoKey === 'lead' ? S.pill('rgba(20,184,166,0.15)', '#2dd4bf', 'rgba(20,184,166,0.3)') : S.pill('rgba(99,102,241,0.15)', '#818cf8', 'rgba(99,102,241,0.3)') }, t.tipo)
+              ),
+              React.createElement('td', { style: { padding: '11px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', fontWeight: '700', color: '#f1f5f9', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, t.monto),
+              React.createElement('td', { style: { padding: '11px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', color: '#64748b', fontSize: '11px' } }, t.fecha),
+              React.createElement('td', { style: { padding: '11px 10px', borderBottom: '0.5px solid rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: '11px' } }, t.medio),
+            ))
+          )
+        )
+      )
+    )
+  );
+}
+
+/* ── Tab 2: Systemic Vision ── */
+function Tab2() {
+  const [prog, setProg] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setProg(true), 350); return () => clearTimeout(t); }, []);
+
+  return React.createElement('div', { style: { animation: 'fadeIn .3s ease' } },
+
+    /* 2.1 Data Sources */
+    React.createElement(SectionLine, null, '2.1 · Fuentes de datos — Inputs del sistema'),
+    React.createElement('div', { style: { marginBottom: '20px' } },
+
+      React.createElement('div', { style: { fontSize: '11px', fontWeight: '600', color: '#475569', marginBottom: '9px', paddingLeft: '2px' } }, 'Fuentes externas (internet)'),
+      React.createElement('div', { style: { ...S.grid2, marginBottom: '12px' } },
+        /* Scraping card */
+        React.createElement('div', { style: S.card },
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '13px' } },
+            React.createElement('div', { style: S.iconWrap('rgba(249,115,22,0.12)') }, React.createElement('span', { style: { fontSize: '18px' } }, '🌐')),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '12.5px', fontWeight: '600', color: '#e2e8f0' } }, 'Scraping activo'),
+              React.createElement('div', { style: { fontSize: '10.5px', color: '#64748b' } }, 'Urbania · Adondevivir'),
+            )
+          ),
+          React.createElement(StatusBadge, { ok: true, label: 'Sincronizado' }),
+          React.createElement('div', { style: { marginTop: '13px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '10px', color: '#64748b', marginBottom: '3px' } }, 'Última sincronización'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '700', color: '#f1f5f9' } }, 'Hace 8 min')
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '10px', color: '#64748b', marginBottom: '3px' } }, 'Listados extraídos hoy'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '700', color: '#2dd4bf' } }, '2,847')
+            ),
+          )
+        ),
+        /* BCRP card */
+        React.createElement('div', { style: S.card },
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '13px' } },
+            React.createElement('div', { style: S.iconWrap('rgba(129,140,248,0.12)') }, React.createElement('span', { style: { fontSize: '18px' } }, '🏦')),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '12.5px', fontWeight: '600', color: '#e2e8f0' } }, 'Conexión macro'),
+              React.createElement('div', { style: { fontSize: '10.5px', color: '#64748b' } }, 'BCRP · INEI'),
+            )
+          ),
+          React.createElement(StatusBadge, { ok: true, label: 'API activa — 200 OK' }),
+          React.createElement('div', { style: { marginTop: '13px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' } },
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '10px', color: '#64748b', marginBottom: '3px' } }, 'Estado de API'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '700', color: '#22c55e' } }, '200 OK')
+            ),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '10px', color: '#64748b', marginBottom: '3px' } }, 'PDFs vectorizados'),
+              React.createElement('div', { style: { fontSize: '14px', fontWeight: '700', color: '#f1f5f9' } }, '47 reportes')
+            ),
+          )
+        ),
+      ),
+
+      React.createElement('div', { style: { fontSize: '11px', fontWeight: '600', color: '#475569', marginBottom: '9px', paddingLeft: '2px' } }, 'Fuentes internas (datos propietarios)'),
+      React.createElement('div', { style: S.grid2 },
+        /* Pinecone */
+        React.createElement('div', { style: S.card },
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '13px' } },
+            React.createElement('div', { style: S.iconWrap('rgba(99,102,241,0.12)') }, React.createElement('span', { style: { fontSize: '18px' } }, '🧠')),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '12.5px', fontWeight: '600', color: '#e2e8f0' } }, 'Vector DB'),
+              React.createElement('div', { style: { fontSize: '10.5px', color: '#64748b' } }, 'Pinecone — índice principal'),
+            )
+          ),
+          React.createElement('div', { style: { fontSize: '30px', fontWeight: '700', color: '#818cf8', letterSpacing: '-0.5px' } }, '1.24M'),
+          React.createElement('div', { style: { fontSize: '11px', color: '#64748b', marginTop: '3px' } }, 'documentos indexados'),
+          React.createElement('div', { style: { fontSize: '11px', color: '#22c55e', marginTop: '7px' } }, '▲ +18,400 esta semana'),
+        ),
+        /* PostgreSQL */
+        React.createElement('div', { style: S.card },
+          React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '13px' } },
+            React.createElement('div', { style: S.iconWrap('rgba(20,184,166,0.12)') }, React.createElement('span', { style: { fontSize: '18px' } }, '🗄️')),
+            React.createElement('div', null,
+              React.createElement('div', { style: { fontSize: '12.5px', fontWeight: '600', color: '#e2e8f0' } }, 'SQL DB — DDP'),
+              React.createElement('div', { style: { fontSize: '10.5px', color: '#64748b' } }, 'PostgreSQL — perfiles únicos'),
+            )
+          ),
+          React.createElement('div', { style: { fontSize: '30px', fontWeight: '700', color: '#2dd4bf', letterSpacing: '-0.5px' } }, '24,830'),
+          React.createElement('div', { style: { fontSize: '11px', color: '#64748b', marginTop: '3px' } }, 'perfiles de compradores únicos'),
+          React.createElement('div', { style: { fontSize: '11px', color: '#22c55e', marginTop: '7px' } }, '▲ +620 nuevos esta semana'),
+        ),
+      )
+    ),
+
+    /* 2.2 Agent Telemetry */
+    React.createElement(SectionLine, null, '2.2 · Telemetría de agentes IA — El procesamiento'),
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '13px', marginBottom: '20px' } },
+      agents.map(a => React.createElement('div', { key: a.id, style: S.card },
+        React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' } },
+          React.createElement('div', { style: S.iconWrap(a.color + '18') }, React.createElement('span', { style: { fontSize: '18px' } }, a.icon)),
+          React.createElement('div', { style: { flex: 1 } },
+            React.createElement('div', { style: { fontSize: '12.5px', fontWeight: '600', color: '#e2e8f0' } }, 'Agente ', a.id),
+            React.createElement('div', { style: { fontSize: '10.5px', color: '#64748b' } }, a.role),
+          ),
+          React.createElement(StatusBadge, { ok: true, label: 'Operativo' }),
+        ),
+        a.metrics.map((m, i) => React.createElement(ProgressBar, { key: i, label: m.label, sublabel: m.value, pct: prog ? m.pct : 0, color: m.pctColor }))
+      ))
+    ),
+
+    /* 2.3 Business Intelligence */
+    React.createElement(SectionLine, null, '2.3 · Inteligencia de negocio — Visión empresarial'),
+    React.createElement('div', { style: { ...S.grid2, marginBottom: '14px' } },
+      /* Demand vs Supply bar */
+      React.createElement('div', { style: S.card },
+        React.createElement('div', { style: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1', marginBottom: '3px' } }, 'Mapa de demanda vs. oferta'),
+        React.createElement('div', { style: { fontSize: '11px', color: '#475569', marginBottom: '10px' } }, 'Presupuesto usuario (interno) vs. precio publicado (externo)'),
+        React.createElement('div', { style: { display: 'flex', gap: '14px', marginBottom: '10px' } },
+          React.createElement('span', { style: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#94a3b8' } },
+            React.createElement('span', { style: { width: '9px', height: '9px', borderRadius: '2px', background: '#6366f1', display: 'inline-block' } }), ' Presupuesto usuario'
+          ),
+          React.createElement('span', { style: { display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#94a3b8' } },
+            React.createElement('span', { style: { width: '9px', height: '9px', borderRadius: '2px', background: '#f43f5e', display: 'inline-block' } }), ' Precio oferta'
+          ),
+        ),
+        React.createElement(ResponsiveContainer, { width: '100%', height: 190 },
+          React.createElement(BarChart, { data: demandaOferta, barSize: 22, barCategoryGap: '35%' },
+            React.createElement(CartesianGrid, { strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.04)', vertical: false }),
+            React.createElement(XAxis, { dataKey: 'distrito', tick: { fill: '#475569', fontSize: 11 }, axisLine: false, tickLine: false }),
+            React.createElement(YAxis, { tick: { fill: '#475569', fontSize: 10 }, axisLine: false, tickLine: false, tickFormatter: v => 'S/' + Math.round(v / 1000) + 'k' }),
+            React.createElement(Tooltip, { contentStyle: ttStyle, formatter: v => ['S/ ' + v.toLocaleString('es-PE')] }),
+            React.createElement(Bar, { dataKey: 'demanda', name: 'Presupuesto usuario', fill: '#6366f1', radius: [3, 3, 0, 0] }),
+            React.createElement(Bar, { dataKey: 'oferta',   name: 'Precio oferta',       fill: '#f43f5e', radius: [3, 3, 0, 0] }),
+          )
+        )
+      ),
+      /* Radar */
+      React.createElement('div', { style: S.card },
+        React.createElement('div', { style: { fontSize: '13px', fontWeight: '600', color: '#cbd5e1', marginBottom: '3px' } }, 'Radar distrital'),
+        React.createElement('div', { style: { fontSize: '11px', color: '#475569', marginBottom: '8px' } }, 'Índice comparativo de 5 dimensiones por distrito'),
+        React.createElement('div', { style: { display: 'flex', gap: '12px', marginBottom: '6px', flexWrap: 'wrap' } },
+          [['#6366f1','Lince'],['#2dd4bf','Jesús María'],['#f59e0b','Miraflores']].map(([c, l]) =>
+            React.createElement('span', { key: l, style: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', color: '#94a3b8' } },
+              React.createElement('span', { style: { width: '8px', height: '8px', borderRadius: '50%', background: c, display: 'inline-block' } }), l
+            )
+          )
+        ),
+        React.createElement(ResponsiveContainer, { width: '100%', height: 190 },
+          React.createElement(RadarChart, { data: radarData },
+            React.createElement(PolarGrid, { stroke: 'rgba(255,255,255,0.07)' }),
+            React.createElement(PolarAngleAxis, { dataKey: 'metric', tick: { fill: '#475569', fontSize: 9.5 } }),
+            React.createElement(PolarRadiusAxis, { tick: false, axisLine: false, domain: [0, 100] }),
+            React.createElement(Radar, { name: 'Lince',       dataKey: 'Lince',       stroke: '#6366f1', fill: '#6366f1', fillOpacity: 0.12, strokeWidth: 1.5 }),
+            React.createElement(Radar, { name: 'Jesús María', dataKey: 'JesusMaria',  stroke: '#2dd4bf', fill: '#2dd4bf', fillOpacity: 0.12, strokeWidth: 1.5 }),
+            React.createElement(Radar, { name: 'Miraflores',  dataKey: 'Miraflores',  stroke: '#f59e0b', fill: '#f59e0b', fillOpacity: 0.12, strokeWidth: 1.5 }),
+          )
+        )
+      ),
+    ),
+
+    /* Insights */
+    React.createElement('div', { style: { fontSize: '12px', fontWeight: '600', color: '#cbd5e1', marginBottom: '11px' } }, 'Top insights de mercado — generados por IA'),
+    React.createElement('div', { style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '11px' } },
+      insights.map((ins, i) => React.createElement('div', { key: i, style: { ...S.insightCard, borderLeftColor: ins.tagColor } },
+        React.createElement('span', { style: { ...S.badge(ins.tagColor + '18', ins.tagColor, ins.tagColor + '33'), marginBottom: '8px' } }, ins.tag),
+        React.createElement('div', { style: { fontSize: '12px', color: '#94a3b8', lineHeight: '1.6', marginTop: '8px' } }, ins.text)
+      ))
+    )
+  );
+}
+
+/* ── Root App ── */
+function App() {
+  const [tab, setTab] = useState(0);
+  const tabs = ['📊 Rendimiento B2B', '⚙️ Visión Sistémica'];
+
+  return React.createElement('div', { style: S.wrap },
+    React.createElement('h2', { className: 'sr-only' }, 'Centro de Comando CEO InmoData IA — Rendimiento B2B y Visión Sistémica de Agentes IA.'),
+
+    /* Header */
+    React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px', paddingBottom: '18px', borderBottom: '0.5px solid rgba(255,255,255,0.07)' } },
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+        React.createElement('div', { style: { width: '38px', height: '38px', background: '#6366f1', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 } }, '🏠'),
+        React.createElement('div', null,
+          React.createElement('div', { style: { fontSize: '16px', fontWeight: '700', color: '#f1f5f9' } }, 'InmoData IA — Centro de Comando'),
+          React.createElement('div', { style: { fontSize: '11px', color: '#64748b', marginTop: '2px' } }, 'CEO Dashboard · Junio 2026'),
+        )
+      ),
+      React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } },
+        React.createElement('span', { style: { background: 'rgba(99,102,241,0.14)', color: '#818cf8', border: '0.5px solid rgba(99,102,241,0.3)', borderRadius: '20px', padding: '5px 13px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '5px' } },
+          React.createElement(Dot), 'En vivo'
+        ),
+        React.createElement('span', { style: { fontSize: '11px', color: '#334155' } }, 'Lince · Jesús María · Miraflores'),
+      )
+    ),
+
+    /* Tabs */
+    React.createElement('div', { style: { display: 'flex', gap: '4px', marginBottom: '22px', background: '#13161f', border: '0.5px solid rgba(255,255,255,0.07)', borderRadius: '12px', padding: '4px' } },
+      tabs.map((t, i) => React.createElement('button', {
+        key: i,
+        onClick: () => setTab(i),
+        style: {
+          flex: 1, padding: '10px 0', textAlign: 'center', fontSize: '13px', fontWeight: '500',
+          color: tab === i ? '#e2e8f0' : '#64748b',
+          borderRadius: '9px', cursor: 'pointer',
+          border: tab === i ? '0.5px solid rgba(255,255,255,0.1)' : 'none',
+          background: tab === i ? '#1e2235' : 'transparent',
+          transition: 'all .2s'
+        }
+      }, t))
+    ),
+
+    /* Panel */
+    tab === 0 ? React.createElement(Tab1) : React.createElement(Tab2),
+
+    /* Footer */
+    React.createElement('div', { style: { marginTop: '28px', paddingTop: '16px', borderTop: '0.5px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#334155' } },
+      React.createElement('span', null, 'InmoData IA · Reporte generado el 13 de junio de 2026'),
+      React.createElement('span', null, 'Lince · Jesús María · Miraflores, Lima — Perú'),
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>

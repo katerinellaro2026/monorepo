@@ -1,0 +1,137 @@
+import { FastifyPluginAsync } from 'fastify';
+import { prisma } from '../index';
+import { requireAdmin } from '../middleware/auth';
+
+const metricsRoutes: FastifyPluginAsync = async (app) => {
+  // ── Endpoint principal: todas las métricas del CEO dashboard en una sola llamada ──
+  app.get('/dashboard', { preHandler: requireAdmin }, async () => {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+
+    // MRR
+    const mrrData = await prisma.subscription.aggregate({
+      where: { status: 'ACTIVE' },
+      _sum: { mrrSOL: true },
+      _count: { id: true },
+    });
+
+    // CPL este mes
+    const cplThisMonth = await prisma.transaction.aggregate({
+      where: { type: 'LEAD', createdAt: { gte: monthStart } },
+      _sum: { amountSOL: true },
+      _count: { id: true },
+    });
+    const cplLastMonth = await prisma.transaction.aggregate({
+      where: { type: 'LEAD', createdAt: { gte: prevMonthStart, lt: monthStart } },
+      _sum: { amountSOL: true },
+    });
+
+    // MRR prev month (rough: sum of subscriptions created before this month)
+    const mrrLastMonth = await prisma.subscription.aggregate({
+      where: { status: 'ACTIVE', startedAt: { lt: monthStart } },
+      _sum: { mrrSOL: true },
+    });
+
+    // Tasa de conversión: leads / chat sessions
+    const totalSessions = await prisma.chatSession.count();
+    const qualifiedLeads = await prisma.lead.count({ where: { status: 'NEW' } });
+    const conversionRate = totalSessions > 0 ? (qualifiedLeads / totalSessions) * 100 : 0;
+
+    // Sesiones activas hoy
+    const chatSessionsToday = await prisma.chatSession.count({
+      where: { createdAt: { gte: todayStart } },
+    });
+
+    // Tasaciones (sessions con outcome VALUATION_DELIVERED)
+    const valuationsToday = await prisma.chatSession.count({
+      where: { outcome: 'VALUATION_DELIVERED', createdAt: { gte: todayStart } },
+    });
+
+    // DDP
+    const ddpTotal = await prisma.user.count({ where: { role: 'BUYER' } });
+    const ddpNewThisWeek = await prisma.user.count({
+      where: { role: 'BUYER', createdAt: { gte: weekAgo } },
+    });
+
+    // Propiedades scrapeadas hoy
+    const propertiesExtractedToday = await prisma.property.count({
+      where: { extractedAt: { gte: todayStart } },
+    });
+
+    // Telemetría de agentes (último log de cada agente)
+    const agentLogs = await prisma.agentLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      distinct: ['agent'],
+    });
+
+    // Demanda vs Oferta por distrito
+    const ofertaByDistrict = await prisma.property.groupBy({
+      by: ['district'],
+      where: { isActive: true, district: { in: ['Lince', 'Jesús María', 'Miraflores'] } },
+      _avg: { price: true },
+    });
+    const demandaByDistrict = await prisma.user.groupBy({
+      by: ['districtOfInterest'],
+      where: { role: 'BUYER', districtOfInterest: { in: ['Lince', 'Jesús María', 'Miraflores'] } },
+      _avg: { budgetMax: true },
+    });
+
+    const demandVsSupply = ['Lince', 'Jesús María', 'Miraflores'].map((d) => ({
+      distrito: d,
+      demanda: Math.round(demandaByDistrict.find((x) => x.districtOfInterest === d)?._avg.budgetMax ?? 0),
+      oferta: Math.round(ofertaByDistrict.find((x) => x.district === d)?._avg.price ?? 0),
+    }));
+
+    // Funnel
+    const funnelData = {
+      usersB2C: ddpTotal,
+      intentionDiscovered: await prisma.chatSession.count({ where: { outcome: { not: 'IN_PROGRESS' } } }),
+      qualifiedLeads: await prisma.lead.count(),
+      soldLeads: await prisma.lead.count({ where: { status: 'SOLD' } }),
+    };
+
+    const mrrCurrent = mrrData._sum.mrrSOL ?? 0;
+    const mrrPrev = mrrLastMonth._sum.mrrSOL ?? 0;
+    const cplCurrent = cplThisMonth._sum.amountSOL ?? 0;
+    const cplPrev = cplLastMonth._sum.amountSOL ?? 0;
+
+    return {
+      kpis: {
+        mrrSOL: mrrCurrent,
+        mrrChangePct: mrrPrev > 0 ? ((mrrCurrent - mrrPrev) / mrrPrev) * 100 : null,
+        cplSOL: cplCurrent,
+        cplChangePct: cplPrev > 0 ? ((cplCurrent - cplPrev) / cplPrev) * 100 : null,
+        activeBrokers: mrrData._count.id,
+        conversionRate: Math.round(conversionRate * 10) / 10,
+      },
+      operations: {
+        chatSessionsToday,
+        valuationsToday,
+        leadsQualifiedToday: cplThisMonth._count.id,
+        qualificationRate: chatSessionsToday > 0
+          ? Math.round((cplThisMonth._count.id / chatSessionsToday) * 1000) / 10
+          : 0,
+      },
+      dataSources: {
+        propertiesExtractedToday,
+        totalActiveProperties: await prisma.property.count({ where: { isActive: true } }),
+        ddpTotal,
+        ddpNewThisWeek,
+        vectorDocsIndexed: await prisma.property.count({ where: { isActive: true } }),
+      },
+      agentTelemetry: agentLogs.map((l) => ({
+        agent: l.agent,
+        latencyMs: l.latencyMs,
+        precision: l.precision,
+        volume: l.volume,
+      })),
+      demandVsSupply,
+      funnel: funnelData,
+    };
+  });
+};
+
+export default metricsRoutes;
