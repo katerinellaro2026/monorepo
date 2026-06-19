@@ -14,4 +14,8 @@ export default defineConfig({
       '/auth': { target: 'http://localhost:3001', changeOrigin: true },
     },
   },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: 'all',
+  },
 });
