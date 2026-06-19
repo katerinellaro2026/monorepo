@@ -111,6 +111,13 @@ export async function runTrainingBatch(
   return data;
 }
 
+// ── Exchange rate ─────────────────────────────────────────────────────────────
+
+export async function fetchExchangeRate(): Promise<{ rate: number; ts: string }> {
+  const { data } = await api.get('/exchange/usd-pen');
+  return data;
+}
+
 // ── Chat ──────────────────────────────────────────────────────────────────────
 
 export async function sendChatMessage(message: string, sessionId?: string) {

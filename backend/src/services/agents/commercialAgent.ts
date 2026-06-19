@@ -1,6 +1,7 @@
 import { prisma } from '../../index';
 import { geminiEnabled, getFlashModel } from '../geminiClient';
 import { getBcrpData } from '../../data/bcrpData';
+import { getUsdToPen } from '../exchangeRate';
 
 export interface CommercialResult {
   response: string;
@@ -12,7 +13,6 @@ export interface CommercialResult {
 }
 
 const PHONE_REGEX = /\b(9\d{8})\b/;
-const SOL_TO_USD = 1 / 3.77; // tipo de cambio referencial
 
 // ─── Extractores NLP para modo sin Gemini ────────────────────────────────────
 
@@ -223,7 +223,8 @@ export async function commercialAgent(
     }
     userId = user.id;
 
-    const budgetUsdForLead = currency === 'USD' ? budget : (budget ?? 0) * SOL_TO_USD;
+    const penPerUsd = await getUsdToPen();
+    const budgetUsdForLead = currency === 'USD' ? budget : (budget ?? 0) / penPerUsd;
     const existingLead = await prisma.lead.findFirst({ where: { chatSessionId: sessionId } });
     if (!existingLead) {
       await prisma.lead.create({
@@ -275,14 +276,15 @@ async function buildConfirmationWithProperties(
 ): Promise<string> {
 
   // Presupuesto en USD (para comparar con BCRP y buscar propiedades)
-  const budgetUsd = currency === 'USD' ? budget : budget * SOL_TO_USD;
+  const penPerUsd = await getUsdToPen();
+  const budgetUsd = currency === 'USD' ? budget : budget / penPerUsd;
 
   // Buscar propiedades en rango ±25% del presupuesto USD
   // La BD mezcla precios USD y SOL; buscamos ambos rangos
   const usdMin = budgetUsd * 0.75;
   const usdMax = budgetUsd * 1.25;
-  const solMin = usdMin / SOL_TO_USD;
-  const solMax = usdMax / SOL_TO_USD;
+  const solMin = usdMin * penPerUsd;
+  const solMax = usdMax * penPerUsd;
 
   const props = await prisma.property.findMany({
     where: {

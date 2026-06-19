@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { fetchExchangeRate } from '@/api/client';
 import Header from '@/components/layout/Header';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
@@ -398,6 +399,11 @@ function ComparativaTable({ metrics }: { metrics: Record<ScenarioKey, { v: Scena
 export default function SimuladorBSC() {
   const [activeScenario, setActiveScenario] = useState<ScenarioKey>('base');
   const [customVars, setCustomVars] = useState<ScenarioVars>({ ...PRESET.base });
+  const [tcUsdPen, setTcUsdPen] = useState<number>(3.77);
+
+  useEffect(() => {
+    fetchExchangeRate().then((r) => setTcUsdPen(r.rate)).catch(() => {});
+  }, []);
 
   const allVars: Record<ScenarioKey, ScenarioVars> = useMemo(() => ({
     base:      PRESET.base,
@@ -676,7 +682,7 @@ export default function SimuladorBSC() {
 
       <div className="pt-4 border-t border-border-subtle flex justify-between text-[11px] text-text-deep">
         <span>InmoData IA · Simulador BSC v1.0 · Junio 2026</span>
-        <span>Cálculos basados en BCRP IVT Q4 2025 · TC S/ 3.77 = USD 1</span>
+        <span>Cálculos basados en BCRP IVT Q4 2025 · TC S/ {tcUsdPen.toFixed(3)} = USD 1</span>
       </div>
     </div>
   );

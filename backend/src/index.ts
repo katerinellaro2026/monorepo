@@ -12,6 +12,7 @@ import chatRoutes from './routes/chat';
 import metricsRoutes from './routes/metrics';
 import scrapingRoutes from './routes/scraping';
 import trainingRoutes from './routes/training';
+import exchangeRoutes from './routes/exchange';
 
 export const prisma = new PrismaClient();
 
@@ -52,6 +53,7 @@ async function main() {
   await app.register(metricsRoutes,       { prefix: '/api/metrics' });
   await app.register(scrapingRoutes,      { prefix: '/api/scraping' });
   await app.register(trainingRoutes,     { prefix: '/api/training' });
+  await app.register(exchangeRoutes,    { prefix: '/api/exchange' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });
