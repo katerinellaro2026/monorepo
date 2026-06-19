@@ -18,9 +18,11 @@ export const prisma = new PrismaClient();
 async function main() {
   const app = Fastify({ logger: true });
 
+  const corsOrigin = process.env.CORS_ORIGIN ?? 'http://localhost:5173';
   await app.register(cors, {
-    origin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
-    credentials: true,
+    origin: corsOrigin,
+    // credentials: true only when origin is not wildcard (browsers block * + credentials)
+    credentials: corsOrigin !== '*',
   });
 
   await app.register(jwt, {
@@ -34,9 +36,9 @@ async function main() {
   app.post<{ Body: { email: string; password: string } }>('/auth/login', async (req, reply) => {
     const { email, password } = req.body;
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !user.passwordHash) return reply.status(401).send({ error: 'Invalid credentials' });
-    // TODO: replace with bcrypt.compare(password, user.passwordHash)
-    if (password !== 'dev-pass') return reply.status(401).send({ error: 'Invalid credentials' });
+    if (!user) return reply.status(401).send({ error: 'Invalid credentials' });
+    const expectedPassword = process.env.ADMIN_PASSWORD ?? 'dev-pass';
+    if (password !== expectedPassword) return reply.status(401).send({ error: 'Invalid credentials' });
     const token = app.jwt.sign({ sub: user.id, role: user.role });
     return { token, role: user.role, name: user.name };
   });
