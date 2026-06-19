@@ -1,19 +1,41 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar';
+import Login from '@/pages/Login';
 import PublicChat from '@/pages/PublicChat';
 import CommandCenter from '@/pages/CommandCenter';
 import ProDashboard from '@/pages/ProDashboard';
+import PlanEstrategico from '@/pages/PlanEstrategico';
+import MapaProcesos from '@/pages/MapaProcesos';
+import SimuladorBSC from '@/pages/SimuladorBSC';
+import EstructuraIA from '@/pages/EstructuraIA';
+import CulturaOrganizacional from '@/pages/CulturaOrganizacional';
 
-function getRole(): string {
-  // In production, decode the JWT. For now, read a stored role.
-  return localStorage.getItem('inmodata_role') ?? 'ADMIN'; // Default to ADMIN for dev
+function getRole(): string | null {
+  return localStorage.getItem('inmodata_role');
+}
+
+function isAuthenticated(): boolean {
+  return !!localStorage.getItem('inmodata_token');
+}
+
+// Redirects to /login if no token, otherwise checks role
+function PrivateRoute({
+  children,
+  requiredRoles,
+}: {
+  children: React.ReactNode;
+  requiredRoles: string[];
+}) {
+  if (!isAuthenticated()) return <Navigate to="/login" replace />;
+  const role = getRole() ?? '';
+  if (!requiredRoles.includes(role)) return <Navigate to="/chat" replace />;
+  return <>{children}</>;
 }
 
 function AppLayout({ children }: { children: React.ReactNode }) {
-  const role = getRole();
   return (
     <div className="flex h-screen overflow-hidden bg-bg-base">
-      <Sidebar role={role} />
+      <Sidebar role={getRole() ?? undefined} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   );
@@ -23,28 +45,95 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public chat — no sidebar needed for immersive experience */}
+        {/* Public */}
+        <Route path="/login" element={<Login />} />
         <Route path="/chat" element={<PublicChat />} />
 
-        {/* Authenticated routes with sidebar */}
+        {/* Private — ADMIN only */}
         <Route
           path="/command-center"
           element={
-            <AppLayout>
-              <CommandCenter />
-            </AppLayout>
-          }
-        />
-        <Route
-          path="/pro-dashboard"
-          element={
-            <AppLayout>
-              <ProDashboard />
-            </AppLayout>
+            <PrivateRoute requiredRoles={['ADMIN']}>
+              <AppLayout>
+                <CommandCenter />
+              </AppLayout>
+            </PrivateRoute>
           }
         />
 
-        {/* Default */}
+        {/* Private — BROKER or ADMIN */}
+        <Route
+          path="/pro-dashboard"
+          element={
+            <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
+              <AppLayout>
+                <ProDashboard />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private — BROKER or ADMIN */}
+        <Route
+          path="/plan-estrategico"
+          element={
+            <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
+              <AppLayout>
+                <PlanEstrategico />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private — BROKER or ADMIN */}
+        <Route
+          path="/mapa-procesos"
+          element={
+            <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
+              <AppLayout>
+                <MapaProcesos />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private — BROKER or ADMIN */}
+        <Route
+          path="/simulador-bsc"
+          element={
+            <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
+              <AppLayout>
+                <SimuladorBSC />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private — BROKER or ADMIN */}
+        <Route
+          path="/estructura-ia"
+          element={
+            <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
+              <AppLayout>
+                <EstructuraIA />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private — BROKER or ADMIN */}
+        <Route
+          path="/cultura-organizacional"
+          element={
+            <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
+              <AppLayout>
+                <CulturaOrganizacional />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Default redirect */}
         <Route path="/" element={<Navigate to="/chat" replace />} />
         <Route path="*" element={<Navigate to="/chat" replace />} />
       </Routes>

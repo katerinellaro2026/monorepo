@@ -10,10 +10,12 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
+// ── Auth ─────────────────────────────────────────────────────────────────────
+// Nota: el endpoint de login está en /auth/login (fuera de /api), por eso se
+// usa axios directo en lugar del cliente con baseURL='/api'.
 
 export async function login(email: string, password: string) {
-  const { data } = await api.post('/auth/login', { email, password });
+  const { data } = await axios.post('/auth/login', { email, password });
   localStorage.setItem('inmodata_token', data.token);
   return data as { token: string; role: string; name: string };
 }
@@ -76,6 +78,31 @@ export async function fetchScrapingStatus() {
 
 export async function triggerScraping() {
   const { data } = await api.post('/scraping/trigger');
+  return data;
+}
+
+// ── Training ──────────────────────────────────────────────────────────────────
+
+export interface TrainingScores {
+  precision: number; empathy: number; claridad: number; adherencia: number;
+}
+export interface TrainingRunResult {
+  response: string; agentUsed: string; latencyMs: number;
+  scores: TrainingScores; global: number;
+}
+
+export async function runTrainingScenario(
+  scenarioId: string, agentKey: string, message: string,
+  history?: Array<{ role: string; content: string }>,
+): Promise<TrainingRunResult> {
+  const { data } = await api.post('/training/run', { scenarioId, agentKey, message, history });
+  return data;
+}
+
+export async function runTrainingBatch(
+  scenarios: Array<{ scenarioId: string; agentKey: string; message: string }>,
+): Promise<{ results: Array<TrainingRunResult & { scenarioId: string; agentKey: string }> }> {
+  const { data } = await api.post('/training/run-batch', { scenarios });
   return data;
 }
 

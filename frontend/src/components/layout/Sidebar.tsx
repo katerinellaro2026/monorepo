@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, BarChart3, Home, LogOut } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, BarChart3, Home, LogOut, Map, GitFork, Activity, Network, Users } from 'lucide-react';
 import { logout } from '@/api/client';
 
 interface NavItem {
@@ -16,7 +16,12 @@ interface SidebarProps {
 const NAV_ITEMS: NavItem[] = [
   { to: '/chat',           icon: <MessageSquare size={18} />,  label: 'Chat Tasador',       roles: ['BUYER', 'BROKER', 'ADMIN'] },
   { to: '/command-center', icon: <LayoutDashboard size={18} />, label: 'Centro de Comando', roles: ['ADMIN'] },
-  { to: '/pro-dashboard',  icon: <BarChart3 size={18} />,      label: 'Dashboard Pro',      roles: ['BROKER', 'ADMIN'] },
+  { to: '/pro-dashboard',    icon: <BarChart3 size={18} />, label: 'Dashboard Pro',    roles: ['BROKER', 'ADMIN'] },
+  { to: '/plan-estrategico', icon: <Map size={18} />,     label: 'Plan Estratégico', roles: ['BROKER', 'ADMIN'] },
+  { to: '/mapa-procesos',   icon: <GitFork size={18} />,  label: 'Mapa de Procesos',  roles: ['BROKER', 'ADMIN'] },
+  { to: '/simulador-bsc',   icon: <Activity size={18} />, label: 'Métricas & Simulador', roles: ['BROKER', 'ADMIN'] },
+  { to: '/estructura-ia',        icon: <Network size={18} />, label: 'Estructura IA',         roles: ['BROKER', 'ADMIN'] },
+  { to: '/cultura-organizacional', icon: <Users size={18} />,   label: 'Cultura Organizacional', roles: ['BROKER', 'ADMIN'] },
 ];
 
 export default function Sidebar({ role }: SidebarProps) {
