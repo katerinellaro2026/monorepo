@@ -40,7 +40,19 @@ export function normalizeDistrict(raw: string): string | null {
 export function normalizePrice(raw: string | number | undefined): number | null {
   if (raw == null) return null;
   if (typeof raw === 'number') return raw > 0 ? raw : null;
-  const cleaned = raw.replace(/[^0-9.,]/g, '').replace(',', '.');
+  // Eliminar todo excepto dígitos, comas y puntos
+  let cleaned = raw.replace(/[^0-9.,]/g, '');
+  // Si hay coma como separador de miles (ej: "120,000") → eliminar coma
+  // Si hay punto como separador de miles (ej: "120.000") → eliminar punto
+  // Detectar: si hay coma seguida de exactamente 3 dígitos al final → miles
+  if (/,\d{3}$/.test(cleaned)) {
+    cleaned = cleaned.replace(/,/g, '');
+  } else if (/\.\d{3}$/.test(cleaned) && !cleaned.includes(',')) {
+    cleaned = cleaned.replace(/\./g, '');
+  } else {
+    // Coma como decimal europeo → convertir a punto
+    cleaned = cleaned.replace(',', '.');
+  }
   const n = parseFloat(cleaned);
   return isNaN(n) || n <= 0 ? null : n;
 }

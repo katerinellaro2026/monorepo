@@ -66,8 +66,10 @@ async function main() {
   // ── Subscriptions ──────────────────────────────────────────────────────────
   await Promise.all(
     brokers.map((b, i) =>
-      prisma.subscription.create({
-        data: {
+      prisma.subscription.upsert({
+        where: { userId: b.id },
+        update: {},
+        create: {
           userId: b.id,
           plan: SubscriptionPlan.PRO,
           mrrSOL: 150,
@@ -79,23 +81,23 @@ async function main() {
 
   // ── Properties ─────────────────────────────────────────────────────────────
   const propertySeed = [
-    { district: 'Lince',       price: 215000, area: 65,  source: PropertySource.URBANIA,      address: 'Av. Arequipa 2400' },
-    { district: 'Lince',       price: 198000, area: 58,  source: PropertySource.ADONDEVIVIR,  address: 'Jr. Risso 340' },
-    { district: 'Lince',       price: 230000, area: 70,  source: PropertySource.URBANIA,      address: 'Ca. Manuel Candamo 156' },
-    { district: 'Jesús María', price: 290000, area: 78,  source: PropertySource.URBANIA,      address: 'Av. Salaverry 1800' },
-    { district: 'Jesús María', price: 275000, area: 72,  source: PropertySource.ADONDEVIVIR,  address: 'Ca. Horacio Urteaga 620' },
-    { district: 'Jesús María', price: 315000, area: 85,  source: PropertySource.URBANIA,      address: 'Av. Petit Thouars 3100' },
-    { district: 'Miraflores',  price: 435000, area: 90,  source: PropertySource.URBANIA,      address: 'Av. Larco 1200' },
-    { district: 'Miraflores',  price: 480000, area: 105, source: PropertySource.ADONDEVIVIR,  address: 'Ca. Schell 380' },
-    { district: 'Miraflores',  price: 520000, area: 115, source: PropertySource.URBANIA,      address: 'Malecón de la Reserva 610' },
-    { district: 'Miraflores',  price: 395000, area: 82,  source: PropertySource.ADONDEVIVIR,  address: 'Av. Benavides 2900' },
+    { district: 'Lince',       price: 215000, areaSqm: 65,  source: PropertySource.URBANIA,      address: 'Av. Arequipa 2400' },
+    { district: 'Lince',       price: 198000, areaSqm: 58,  source: PropertySource.ADONDEVIVIR,  address: 'Jr. Risso 340' },
+    { district: 'Lince',       price: 230000, areaSqm: 70,  source: PropertySource.URBANIA,      address: 'Ca. Manuel Candamo 156' },
+    { district: 'Jesús María', price: 290000, areaSqm: 78,  source: PropertySource.URBANIA,      address: 'Av. Salaverry 1800' },
+    { district: 'Jesús María', price: 275000, areaSqm: 72,  source: PropertySource.ADONDEVIVIR,  address: 'Ca. Horacio Urteaga 620' },
+    { district: 'Jesús María', price: 315000, areaSqm: 85,  source: PropertySource.URBANIA,      address: 'Av. Petit Thouars 3100' },
+    { district: 'Miraflores',  price: 435000, areaSqm: 90,  source: PropertySource.URBANIA,      address: 'Av. Larco 1200' },
+    { district: 'Miraflores',  price: 480000, areaSqm: 105, source: PropertySource.ADONDEVIVIR,  address: 'Ca. Schell 380' },
+    { district: 'Miraflores',  price: 520000, areaSqm: 115, source: PropertySource.URBANIA,      address: 'Malecón de la Reserva 610' },
+    { district: 'Miraflores',  price: 395000, areaSqm: 82,  source: PropertySource.ADONDEVIVIR,  address: 'Av. Benavides 2900' },
   ];
 
   await prisma.property.createMany({
     data: propertySeed.map((p) => ({
       ...p,
-      pricePerSqm: p.price / p.area,
-      bedrooms: Math.floor(p.area / 25),
+      pricePerSqm: p.price / p.areaSqm,
+      bedrooms: Math.floor(p.areaSqm / 25),
       bathrooms: 2,
       propertyType: 'Departamento',
       isActive: true,
@@ -134,17 +136,16 @@ async function main() {
 
   // ── Transactions ──────────────────────────────────────────────────────────
   const txData = [
-    { clientName: 'Inmobiliaria Pacífico', type: TransactionType.LEAD,         amount: 320, method: PaymentMethod.CREDIT_CARD },
-    { clientName: 'Carlos Mendoza',        type: TransactionType.SUBSCRIPTION, amount: 150, method: PaymentMethod.BANK_TRANSFER },
-    { clientName: 'Grupo Habitat Perú',    type: TransactionType.LEAD,         amount: 480, method: PaymentMethod.YAPE_PLIN },
-    { clientName: 'Sofía Ríos Paredes',    type: TransactionType.SUBSCRIPTION, amount: 150, method: PaymentMethod.CREDIT_CARD },
-    { clientName: 'Nexo Inmobiliario SAC', type: TransactionType.LEAD,         amount: 640, method: PaymentMethod.BANK_TRANSFER },
+    { clientName: 'Inmobiliaria Pacífico', type: TransactionType.LEAD,         amountSOL: 320, paymentMethod: PaymentMethod.CREDIT_CARD },
+    { clientName: 'Carlos Mendoza',        type: TransactionType.SUBSCRIPTION, amountSOL: 150, paymentMethod: PaymentMethod.BANK_TRANSFER },
+    { clientName: 'Grupo Habitat Perú',    type: TransactionType.LEAD,         amountSOL: 480, paymentMethod: PaymentMethod.YAPE_PLIN },
+    { clientName: 'Sofía Ríos Paredes',    type: TransactionType.SUBSCRIPTION, amountSOL: 150, paymentMethod: PaymentMethod.CREDIT_CARD },
+    { clientName: 'Nexo Inmobiliario SAC', type: TransactionType.LEAD,         amountSOL: 640, paymentMethod: PaymentMethod.BANK_TRANSFER },
   ];
 
   await prisma.transaction.createMany({
     data: txData.map((t, i) => ({
       ...t,
-      amountSOL: t.amount,
       createdAt: new Date(Date.now() - i * 24 * 60 * 60 * 1000),
     })),
     skipDuplicates: true,

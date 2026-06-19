@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import { scrapeUrbania } from './scrapers/urbania';
@@ -12,10 +13,9 @@ const INTERVAL_MINUTES = Number(process.env.SCRAPING_INTERVAL_MINUTES ?? 60);
 async function runScraping() {
   console.log(`[Scraper] Starting run at ${new Date().toISOString()}`);
 
-  const [urbaniaRaw, adondeRaw] = await Promise.all([
-    scrapeUrbania(TARGET_DISTRICTS),
-    scrapeAdondevivir(TARGET_DISTRICTS),
-  ]);
+  // Secuencial para evitar que dos browsers compitan por CPU/memoria
+  const urbaniaRaw = await scrapeUrbania(TARGET_DISTRICTS);
+  const adondeRaw  = await scrapeAdondevivir(TARGET_DISTRICTS);
 
   let inserted = 0;
   let skipped = 0;
