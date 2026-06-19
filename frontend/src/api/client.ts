@@ -1,8 +1,12 @@
 import axios from 'axios';
 import type { DashboardMetrics, RevenueByMonth, Transaction, Lead, Property, Subscription } from '@/types';
 
+// VITE_API_URL = backend root (e.g. https://backend.up.railway.app), no trailing /api
+// In dev it's undefined → fall back to Vite proxy at /api
+const BACKEND_ORIGIN = import.meta.env.VITE_API_URL ?? '';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api',
+  baseURL: BACKEND_ORIGIN ? `${BACKEND_ORIGIN}/api` : '/api',
 });
 
 // Attach JWT if present
@@ -12,12 +16,11 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
-// Nota: el endpoint de login está en /auth/login (fuera de /api), por eso se
-// usa axios directo en lugar del cliente con baseURL='/api'.
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string) {
-  const { data } = await axios.post('/auth/login', { email, password });
+  // Use absolute URL in production so Vite preview proxy is bypassed
+  const { data } = await axios.post(`${BACKEND_ORIGIN}/auth/login`, { email, password });
   localStorage.setItem('inmodata_token', data.token);
   return data as { token: string; role: string; name: string };
 }
