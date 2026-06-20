@@ -207,14 +207,14 @@ model AgentLog {
 
 model TrainingExample {
   id          String   @id @default(cuid())
-  agentKey    String   // TRIAJE | ANALISTA | COMERCIAL | SOPORTE_B2B
-  scenarioId  String?
-  userMessage String
-  idealOutput String   // respuesta aprobada (puede ser editada por el admin)
-  scores      Json?    // { precision, empathy, claridad, adherencia, global }
-  approvedBy  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  agentKey    String   @map("agent_key")
+  scenarioId  String?  @map("scenario_id")
+  userMessage String   @map("user_message")
+  idealOutput String   @map("ideal_output")
+  scores      Json?
+  approvedBy  String?  @map("approved_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt      @map("updated_at")
 
   @@index([agentKey])
   @@map("training_examples")
