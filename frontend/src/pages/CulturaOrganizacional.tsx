@@ -240,7 +240,7 @@ const TRAINING_SCENARIOS = [
         situacion: 'El usuario escribe un mensaje muy corto y ambiguo.',
         input: '"hola quiero info sobre depas"',
         culturaEsperada: 'Saludo con nombre propio, ofrecer opciones claras (tasar / comparar / buscar), no asumir el intent.',
-        respuestaAgente: '¡Hola! Soy **Sofía Torres** de InmoData IA 👋\n\nPuedo ayudarte de 3 formas:\n🏠 **Tasar** una propiedad (¿cuánto vale?)\n📊 **Comparar precios** entre distritos\n🤝 **Buscar** un depa según tu presupuesto y zona\n\n¿Cuál de estas te interesa hoy?',
+        respuestaAgente: '¡Hola! Soy **Sofía** de InmoData IA 👋\n\nPuedo ayudarte de 3 formas:\n🏠 **Tasar** una propiedad (¿cuánto vale?)\n📊 **Comparar precios** entre distritos\n🤝 **Buscar** un depa según tu presupuesto y zona\n\n¿Cuál de estas te interesa hoy?',
         scores: { precision: 96, empatia: 94, claridad: 98, adherencia: 95 },
         aprobado: true,
       },
@@ -250,7 +250,7 @@ const TRAINING_SCENARIOS = [
         situacion: 'El usuario expresa frustración explícita por malas experiencias previas.',
         input: '"ya llamé a 5 corredores y nadie me da precios claros, esto es un desastre"',
         culturaEsperada: 'Reconocer la frustración, no defenderse, ofrecer diferenciación concreta e inmediata.',
-        respuestaAgente: 'Entiendo completamente tu frustración — esa opacidad de precios es exactamente el problema que nosotros resolvemos. 🎯\n\nSoy **Sofía** y aquí en InmoData IA trabajamos diferente: datos reales del BCRP + comparables de portales verificados, sin rodeos.\n\n¿En qué distrito estás buscando? Te paso con **Carlos Mendoza**, nuestro analista, para que te dé cifras concretas ahora mismo.',
+        respuestaAgente: 'Entiendo completamente tu frustración — esa opacidad de precios es exactamente el problema que nosotros resolvemos. 🎯\n\nSoy **Sofía** y aquí en InmoData IA trabajamos diferente: datos reales del BCRP + comparables de portales verificados, sin rodeos.\n\n¿En qué distrito estás buscando? Te paso con **Carlos**, nuestro analista, para que te dé cifras concretas ahora mismo.',
         scores: { precision: 90, empatia: 98, claridad: 95, adherencia: 96 },
         aprobado: true,
       },
@@ -260,7 +260,7 @@ const TRAINING_SCENARIOS = [
         situacion: 'El usuario da presupuesto Y pregunta por precio en el mismo mensaje.',
         input: '"tengo 200 mil dólares y quiero saber si Miraflores está caro"',
         culturaEsperada: 'Enrutar a Analista (valuation) como prioridad, luego al Comercial para calificar el lead.',
-        respuestaAgente: '¡Perfecto! Esa pregunta tiene dos partes y la respondemos bien. 📊\n\nTe paso con **Carlos Mendoza** (nuestro analista) para darte el precio real de Miraflores según BCRP.\nLuego **Diego Quispe** te ayuda a ver qué te alcanza con tu presupuesto de USD 200,000.',
+        respuestaAgente: '¡Perfecto! Esa pregunta tiene dos partes y la respondemos bien. 📊\n\nTe paso con **Carlos** (nuestro analista) para darte el precio real de Miraflores según BCRP.\nLuego **Diego** te ayuda a ver qué te alcanza con tu presupuesto de USD 200,000.',
         scores: { precision: 97, empatia: 88, claridad: 96, adherencia: 97 },
         aprobado: true,
       },
@@ -275,7 +275,7 @@ const TRAINING_SCENARIOS = [
         situacion: 'El usuario consulta un precio claramente muy por encima del mercado.',
         input: '"me quieren vender un depa de 50m² en Lince por $220,000, ¿está bien?"',
         culturaEsperada: 'Decirlo claramente con datos: está X% sobre la mediana BCRP. No suavizar la respuesta para complacer.',
-        respuestaAgente: 'Soy **Carlos Mendoza** y con los datos en la mano: ese precio está **significativamente por encima** del mercado. 📊\n\nSegún **BCRP IVT Q4 2025**, el precio mediano en Lince es **USD 1,970/m²**. Para 50m²:\n• **Valor de referencia:** USD 98,500\n• **Precio ofrecido:** USD 220,000\n• **Diferencia:** +123% sobre la mediana\n\nEso no es una propiedad cara — es una sobrevaluación significativa. Te recomiendo negociar agresivamente o buscar alternativas.',
+        respuestaAgente: 'Soy **Carlos** y con los datos en la mano: ese precio está **significativamente por encima** del mercado. 📊\n\nSegún **BCRP IVT Q4 2025**, el precio mediano en Lince es **USD 1,970/m²**. Para 50m²:\n• **Valor de referencia:** USD 98,500\n• **Precio ofrecido:** USD 220,000\n• **Diferencia:** +123% sobre la mediana\n\nEso no es una propiedad cara — es una sobrevaluación significativa. Te recomiendo negociar agresivamente o buscar alternativas.',
         scores: { precision: 99, empatia: 85, claridad: 98, adherencia: 97 },
         aprobado: true,
       },
@@ -1620,7 +1620,7 @@ export default function CulturaOrganizacional() {
 
       <div className="mt-8 pt-4 border-t border-border-subtle flex justify-between text-[11px] text-text-deep">
         <span>InmoData IA · Cultura Organizacional v1.0 · Junio 2026</span>
-        <span>Sofía Torres · Carlos Mendoza · Diego Quispe · Valeria Castro</span>
+        <span>Sofía · Carlos · Diego · Valeria</span>
       </div>
     </div>
   );

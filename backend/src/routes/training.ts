@@ -46,9 +46,9 @@ function autoScore(response: string, agentKey: string): {
   // ── Adherencia cultural: se presenta con nombre, no presiona, ofrece alternativa ──
   const agentNames: Record<string, RegExp> = {
     TRIAJE:      /sof[íi]a|coordinadora/i,
-    ANALISTA:    /carlos\s+mendoza|analista/i,
-    COMERCIAL:   /diego\s+quispe|ejecutivo\s+comercial/i,
-    SOPORTE_B2B: /valeria\s+castro|especialista/i,
+    ANALISTA:    /\bcarlos\b|analista/i,
+    COMERCIAL:   /\bdiego\b|ejecutivo\s+comercial/i,
+    SOPORTE_B2B: /\bvaleria\b|especialista/i,
   };
   const namePresent = agentNames[agentKey]?.test(r) ?? false;
   const noSpam = !/urgente|última\s+oportunidad|no\s+pierdas/i.test(r);

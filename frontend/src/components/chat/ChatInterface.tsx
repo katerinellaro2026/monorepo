@@ -32,7 +32,7 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      content: '¡Hola! Soy **Sofía Torres**, coordinadora de InmoData IA.\n\nPuedo conectarte con nuestros especialistas para:\n🏠 **Tasar** una propiedad en Lince, Jesús María o Miraflores\n📊 **Comparar precios** del mercado en tiempo real\n🤝 **Calificar tu búsqueda** con un corredor especialista\n\n¿En qué te puedo ayudar hoy?',
+      content: '¡Hola! Soy **Sofía**, coordinadora de InmoData IA.\n\nPuedo conectarte con nuestros especialistas para:\n🏠 **Tasar** una propiedad en Lince, Jesús María o Miraflores\n📊 **Comparar precios** del mercado en tiempo real\n🤝 **Calificar tu búsqueda** con un corredor especialista\n\n¿En qué te puedo ayudar hoy?',
       agent: 'TRIAJE',
     },
   ]);

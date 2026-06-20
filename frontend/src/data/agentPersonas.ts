@@ -12,7 +12,7 @@ export interface AgentPersona {
 export const AGENT_PERSONAS: Record<string, AgentPersona> = {
   TRIAJE: {
     key: 'TRIAJE',
-    name: 'Sofía Torres',
+    name: 'Sofía',
     role: 'Coordinadora de Consultas',
     avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
     color: '#6366f1',
@@ -22,7 +22,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
   },
   ANALISTA: {
     key: 'ANALISTA',
-    name: 'Carlos Mendoza',
+    name: 'Carlos',
     role: 'Analista de Mercado Inmobiliario',
     avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
     color: '#f59e0b',
@@ -42,7 +42,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
   },
   COMERCIAL: {
     key: 'COMERCIAL',
-    name: 'Diego Quispe',
+    name: 'Diego',
     role: 'Ejecutivo Comercial',
     avatar: 'https://randomuser.me/api/portraits/men/67.jpg',
     color: '#2dd4bf',
@@ -52,7 +52,7 @@ export const AGENT_PERSONAS: Record<string, AgentPersona> = {
   },
   SOPORTE_B2B: {
     key: 'SOPORTE_B2B',
-    name: 'Valeria Castro',
+    name: 'Valeria',
     role: 'Especialista en Corredores',
     avatar: 'https://randomuser.me/api/portraits/women/68.jpg',
     color: '#22c55e',
