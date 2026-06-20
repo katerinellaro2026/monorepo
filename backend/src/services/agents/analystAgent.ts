@@ -5,7 +5,6 @@ import {
   getBcrpData,
   evaluateSalePrice,
   evaluateRentPrice,
-  BCRP_IVT_2025,
 } from '../../data/bcrpData';
 
 export interface ValuationResult {
@@ -102,8 +101,13 @@ export async function analystAgent(
   const priceInfo = extractPrice(fullText);
   const isRent    = isRentQuery(fullText);
 
+  // ── Distritos con cobertura activa ────────────────────────────────────────
+  const COVERED = ['Lince', 'Jesús María', 'Miraflores'];
+  const coveredList = COVERED.join(', ');
+
   // ── BCRP reference ────────────────────────────────────────────────────────
   const bcrpRef = district ? getBcrpData(district) : null;
+  const districtCovered = district ? !!bcrpRef : false;
 
   // Precio/m² en USD para comparar (convertimos si viene en soles)
   let priceUsd: number | null = null;
@@ -173,6 +177,15 @@ export async function analystAgent(
         )
         .join('\n') || 'Sin comparables similares en base de datos.';
 
+      // Bloque de detección de distrito (explícito para el LLM)
+      const districtStatusBlock = !district
+        ? `DISTRITO: NO DETECTADO en el mensaje ni en el historial.
+DISTRITOS CON DATOS BCRP DISPONIBLES: ${coveredList}.`
+        : !districtCovered
+        ? `DISTRITO MENCIONADO: "${district}" — SIN COBERTURA en nuestra base BCRP.
+DISTRITOS CON DATOS BCRP DISPONIBLES: ${coveredList}.`
+        : `DISTRITO CONFIRMADO: ${district} ✓`;
+
       // Bloque BCRP
       const bcrpBlock = bcrpRef
         ? `REFERENCIA BCRP IVT 2025 — ${district}:
@@ -180,7 +193,7 @@ export async function analystAgent(
 - Alquiler anual de referencia: US$ ${bcrpRef.annualRentUsdPerSqm}/m²/año (US$ ${(bcrpRef.annualRentUsdPerSqm/12).toFixed(1)}/m²/mes)
 - PER (años para recuperar con alquiler): ${bcrpRef.per} años
 - Fuente: BCRP Nota de Estudios No. 16, 09/03/2026`
-        : `No se encontró referencia BCRP para el distrito mencionado. Distritos con datos: ${BCRP_IVT_2025.map(d => d.district).join(', ')}.`;
+        : '';
 
       // Bloque de evaluación
       let evalBlock = '';
@@ -201,6 +214,7 @@ EVALUACIÓN DEL ALQUILER CONSULTADO:
       const prompt = `Eres el Agente Analista de InmoData IA, experto en el mercado inmobiliario de Lima, Perú.
 Tu fuente primaria de verdad es el BCRP. Los datos de portales son referencia secundaria.
 ${fewShotBlock}
+${districtStatusBlock}
 ${bcrpBlock}
 ${evalBlock}
 
@@ -210,14 +224,15 @@ ${comparablesText}
 CONSULTA DEL USUARIO: "${message}"
 
 Instrucciones:
-1. Si el usuario menciona un precio concreto: evalúa si es adecuado según el BCRP primero.
-   Sé directo: "está X% ${saleEval ? (saleEval.diffPct > 0 ? 'por encima' : 'por debajo') : ''} del precio de mercado según el BCRP".
+${!district ? `1. NO se detectó ningún distrito. DEBES preguntarle al usuario en qué distrito de Lima está interesado antes de dar cualquier análisis. Ofrécele la lista de distritos disponibles: ${coveredList}.` : ''}
+${district && !districtCovered ? `1. El distrito "${district}" NO está en nuestra cobertura BCRP actual. Infórmalo amablemente y ofrece los distritos disponibles: ${coveredList}. Pregunta si alguno le interesa como referencia.` : ''}
+${districtCovered ? `1. Si el usuario menciona un precio concreto: evalúa si es adecuado según el BCRP primero. Sé directo: "está X% ${saleEval ? (saleEval.diffPct > 0 ? 'por encima' : 'por debajo') : ''} del precio de mercado según el BCRP".
 2. Muestra el precio/m² BCRP de referencia como benchmark.
 3. Si hay comparables similares en portales, menciona 1-2 como alternativas concretas.
 4. Si la operación es alquiler, incluye también el PER como indicador de rentabilidad.
-5. Si no hay precio ni m², pide esos datos para hacer la evaluación.
-6. Usa **negrita** para los números clave.
-7. Máximo 150 palabras. Responde en español peruano, tono profesional pero cercano.`;
+5. Si no hay precio ni m², pide esos datos para hacer la evaluación.` : ''}
+- Usa **negrita** para los números clave.
+- Máximo 150 palabras. Responde en español peruano, tono profesional pero cercano.`;
 
       const result = await model.generateContent(prompt);
       inputTokens = result.response.usageMetadata?.promptTokenCount ?? 0;

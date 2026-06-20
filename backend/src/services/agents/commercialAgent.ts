@@ -107,8 +107,13 @@ async function geminiCommercial(
   const fewShot = await getFewShotExamples('COMERCIAL', message);
   const fewShotBlock = buildFewShotBlock(fewShot);
 
+  const coveredDistricts = 'Lince, Jesús María, Miraflores';
+
   const prompt = `Eres el Agente Comercial de InmoData IA. Tu objetivo es calificar leads inmobiliarios de forma natural y conversacional en Lima, Perú.
 ${fewShotBlock}
+DISTRITOS CON COBERTURA DE DATOS: ${coveredDistricts}.
+Si el usuario menciona un distrito que NO está en esa lista, infórmale amablemente que aún no tenemos cobertura en ese distrito y pregúntale si alguno de los disponibles le interesa.
+
 HISTORIAL DE CONVERSACIÓN:
 ${historyText || '(inicio)'}
 
@@ -120,13 +125,13 @@ INSTRUCCIONES:
    - phone: teléfono peruano, 9 dígitos comenzando con 9 (ej: 987654321). null si no se mencionó.
    - budget: monto numérico del presupuesto. null si no se mencionó.
    - currency: "USD" si dijo dólares/USD, "SOL" si dijo soles/S/. Default "SOL".
-   - district: distrito de Lima que busca (ej: "Miraflores", "Lince", "Jesús María"). null si no se mencionó.
+   - district: SOLO acepta distritos de esta lista: ${coveredDistricts}. Si el usuario mencionó otro, devuelve null y pide que elija uno de los disponibles.
 
 2. ORDEN DE RECOLECCIÓN (pregunta de a uno a la vez, de forma conversacional):
    a. Si no tienes presupuesto → pregunta el presupuesto y la moneda.
    b. Si no tienes nombre → pregunta el nombre.
    c. Si no tienes teléfono → pide el celular.
-   d. Si no tienes distrito → pregunta en qué zona de Lima busca.
+   d. Si no tienes distrito (o el mencionado no tiene cobertura) → pregunta en qué zona de Lima busca y ofrece la lista de distritos disponibles.
    e. Si tienes los 4 datos → confirma entusiastamente que un corredor los contactará pronto.
 
 3. Responde siempre en español peruano natural y amigable. Nunca pidas dos datos a la vez.

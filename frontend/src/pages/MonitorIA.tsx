@@ -215,20 +215,32 @@ export default function MonitorIA() {
         ))}
       </div>
 
-      {/* Tabs de agente */}
-      <div className="flex gap-1 mb-5 p-1 bg-bg-card rounded-xl border border-border-subtle w-fit">
-        {AGENTS.map((a) => (
-          <button
-            key={a.key}
-            onClick={() => handleAgent(a.key)}
-            className="px-4 py-2 rounded-lg text-[10.5px] font-bold transition-all"
-            style={activeAgent === a.key
-              ? { background: a.color, color: '#fff' }
-              : { color: '#94a3b8' }}
-          >
-            {a.label}
-          </button>
-        ))}
+      {/* Tabs de agente + reload */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex gap-1 p-1 bg-bg-card rounded-xl border border-border-subtle">
+          {AGENTS.map((a) => (
+            <button
+              key={a.key}
+              onClick={() => handleAgent(a.key)}
+              className="px-4 py-2 rounded-lg text-[10.5px] font-bold transition-all"
+              style={activeAgent === a.key
+                ? { background: a.color, color: '#fff' }
+                : { color: '#94a3b8' }}
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => load(activeAgent, page)}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10.5px] font-bold transition-all disabled:opacity-40"
+          style={{ background: '#ffffff0a', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }}
+          title="Recargar logs"
+        >
+          <span className={loading ? 'animate-spin inline-block' : 'inline-block'}>⟳</span>
+          Recargar
+        </button>
       </div>
 
       {/* Lista de logs */}
