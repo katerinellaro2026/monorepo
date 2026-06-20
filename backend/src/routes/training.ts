@@ -1,6 +1,7 @@
 import { FastifyPluginAsync } from 'fastify';
 import { requireBrokerOrAdmin } from '../middleware/auth';
 import { orchestrate } from '../services/agentOrchestrator';
+import { saveTrainingExample, listTrainingExamples } from '../services/trainingExamples';
 
 /* ── Auto-scoring cultural ────────────────────────────────────────────────── */
 
@@ -126,6 +127,41 @@ const trainingRoutes: FastifyPluginAsync = async (app) => {
         }),
       );
       return { results };
+    },
+  );
+
+  // Aprobar y guardar un ejemplo como dato de entrenamiento
+  app.post<{ Body: {
+    agentKey: string; scenarioId?: string;
+    userMessage: string; idealOutput: string;
+    scores?: object; approvedBy?: string;
+  } }>(
+    '/approve',
+    { preHandler: requireBrokerOrAdmin },
+    async (req) => {
+      const example = await saveTrainingExample(req.body);
+      return { ok: true, id: example.id };
+    },
+  );
+
+  // Listar ejemplos aprobados (para el panel de admin)
+  app.get<{ Querystring: { agentKey?: string } }>(
+    '/examples',
+    { preHandler: requireBrokerOrAdmin },
+    async (req) => {
+      const examples = await listTrainingExamples(req.query.agentKey);
+      return examples;
+    },
+  );
+
+  // Eliminar un ejemplo
+  app.delete<{ Params: { id: string } }>(
+    '/examples/:id',
+    { preHandler: requireBrokerOrAdmin },
+    async (req) => {
+      const { prisma } = await import('../index');
+      await prisma.trainingExample.delete({ where: { id: req.params.id } });
+      return { ok: true };
     },
   );
 };

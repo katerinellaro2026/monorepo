@@ -2,6 +2,7 @@ import { prisma } from '../../index';
 import { geminiEnabled, getFlashModel } from '../geminiClient';
 import { getBcrpData } from '../../data/bcrpData';
 import { getUsdToPen } from '../exchangeRate';
+import { getFewShotExamples, buildFewShotBlock } from '../trainingExamples';
 
 export interface CommercialResult {
   response: string;
@@ -99,8 +100,11 @@ async function geminiCommercial(
   const flash = getFlashModel(true);
   const historyText = history.slice(-6).map((h) => `${h.role === 'user' ? 'Usuario' : 'Asistente'}: ${h.content}`).join('\n');
 
-  const prompt = `Eres el Agente Comercial de InmoData IA. Tu objetivo es calificar leads inmobiliarios de forma natural y conversacional en Lima, Perú.
+  const fewShot = await getFewShotExamples('COMERCIAL', message);
+  const fewShotBlock = buildFewShotBlock(fewShot);
 
+  const prompt = `Eres el Agente Comercial de InmoData IA. Tu objetivo es calificar leads inmobiliarios de forma natural y conversacional en Lima, Perú.
+${fewShotBlock}
 HISTORIAL DE CONVERSACIÓN:
 ${historyText || '(inicio)'}
 

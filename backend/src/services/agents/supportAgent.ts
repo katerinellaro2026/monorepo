@@ -1,5 +1,6 @@
 import { prisma } from '../../index';
 import { geminiEnabled, getProModel } from '../geminiClient';
+import { getFewShotExamples, buildFewShotBlock } from '../trainingExamples';
 
 export interface SupportResult {
   response: string;
@@ -45,7 +46,11 @@ export async function supportAgent(
         (s) => `${s.district}: precio prom S/ ${s.avgPrice.toLocaleString('es-PE')}, rango S/ ${s.minPrice.toLocaleString('es-PE')}–S/ ${s.maxPrice.toLocaleString('es-PE')}, ${s.avgPricePerSqm.toLocaleString('es-PE')}/m², ${s.listings} listados`
       ).join('\n');
 
-      const prompt = `Eres el Agente de Soporte B2B de InmoData IA. Generas Análisis Comparativos de Mercado (ACM) profesionales para corredores inmobiliarios en Lima, Perú.
+      const fewShot = await getFewShotExamples('SOPORTE_B2B', message);
+      const fewShotBlock = buildFewShotBlock(fewShot);
+
+      const prompt = `Eres el Agente de Soporte B2B de InmoData IA.
+${fewShotBlock} Generas Análisis Comparativos de Mercado (ACM) profesionales para corredores inmobiliarios en Lima, Perú.
 
 DATOS REALES DE MERCADO (actualizados hoy):
 ${statsText}

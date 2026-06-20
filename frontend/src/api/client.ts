@@ -86,6 +86,32 @@ export async function triggerScraping() {
   return data;
 }
 
+// ── Training examples ─────────────────────────────────────────────────────────
+
+export interface TrainingExample {
+  id: string; agentKey: string; scenarioId?: string;
+  userMessage: string; idealOutput: string;
+  scores?: object; approvedBy?: string; createdAt: string;
+}
+
+export async function approveTrainingExample(data: {
+  agentKey: string; scenarioId: string;
+  userMessage: string; idealOutput: string;
+  scores: object; approvedBy?: string;
+}): Promise<{ ok: boolean; id: string }> {
+  const { data: res } = await api.post('/training/approve', data);
+  return res;
+}
+
+export async function fetchTrainingExamples(agentKey?: string): Promise<TrainingExample[]> {
+  const { data } = await api.get('/training/examples', { params: agentKey ? { agentKey } : {} });
+  return data;
+}
+
+export async function deleteTrainingExample(id: string): Promise<void> {
+  await api.delete(`/training/examples/${id}`);
+}
+
 // ── Training ──────────────────────────────────────────────────────────────────
 
 export interface TrainingScores {

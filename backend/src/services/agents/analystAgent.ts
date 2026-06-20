@@ -1,5 +1,6 @@
 import { prisma } from '../../index';
-import { geminiEnabled, getProModel, getFlashModel } from '../geminiClient';
+import { geminiEnabled, getProModel } from '../geminiClient';
+import { getFewShotExamples, buildFewShotBlock } from '../trainingExamples';
 import {
   getBcrpData,
   evaluateSalePrice,
@@ -151,6 +152,9 @@ export async function analystAgent(
     try {
       const model = getProModel();
 
+      const fewShot = await getFewShotExamples('ANALISTA', message);
+      const fewShotBlock = buildFewShotBlock(fewShot);
+
       // Comparables alternativas del portal
       const comparablesText = comparableProps
         .filter((p) => {
@@ -191,7 +195,7 @@ EVALUACIÓN DEL ALQUILER CONSULTADO:
 
       const prompt = `Eres el Agente Analista de InmoData IA, experto en el mercado inmobiliario de Lima, Perú.
 Tu fuente primaria de verdad es el BCRP. Los datos de portales son referencia secundaria.
-
+${fewShotBlock}
 ${bcrpBlock}
 ${evalBlock}
 

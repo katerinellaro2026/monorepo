@@ -204,3 +204,18 @@ model AgentLog {
 
   @@map("agent_logs")
 }
+
+model TrainingExample {
+  id          String   @id @default(cuid())
+  agentKey    String   // TRIAJE | ANALISTA | COMERCIAL | SOPORTE_B2B
+  scenarioId  String?
+  userMessage String
+  idealOutput String   // respuesta aprobada (puede ser editada por el admin)
+  scores      Json?    // { precision, empathy, claridad, adherencia, global }
+  approvedBy  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([agentKey])
+  @@map("training_examples")
+}

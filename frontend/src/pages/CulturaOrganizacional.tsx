@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import Header from '@/components/layout/Header';
 import { AGENT_PERSONAS } from '@/data/agentPersonas';
-import { runTrainingScenario, type TrainingRunResult } from '@/api/client';
+import { runTrainingScenario, approveTrainingExample, type TrainingRunResult } from '@/api/client';
 
 /* ─── Tokens ─────────────────────────────────────────────────────── */
 const C = {
@@ -391,6 +391,8 @@ function TrainingSection({
   const [running, setRunning] = useState<string | null>(null);
   const [tab, setTab] = useState<'expected' | 'live'>('expected');
   const [error, setError] = useState<string | null>(null);
+  const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
+  const [approving, setApproving] = useState<string | null>(null);
 
   const agentData = TRAINING_SCENARIOS.find((a) => a.agentKey === activeAgent)!;
   const scenario = agentData.escenarios[activeScenario];
@@ -410,6 +412,23 @@ function TrainingSection({
       setRunning(null);
     }
   }, [scenario, activeAgent, onResult]);
+
+  const handleApprove = useCallback(async () => {
+    if (!live) return;
+    setApproving(scenario.id);
+    try {
+      await approveTrainingExample({
+        agentKey: activeAgent,
+        scenarioId: scenario.id,
+        userMessage: scenario.input,
+        idealOutput: live.response,
+        scores: live.scores,
+      });
+      setApprovedIds(prev => new Set([...prev, scenario.id]));
+    } finally {
+      setApproving(null);
+    }
+  }, [live, scenario, activeAgent]);
 
   const scoreColor = (v: number) => v >= 90 ? C.green : v >= 75 ? C.amber : C.rose;
 
@@ -610,6 +629,27 @@ function TrainingSection({
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Botón Aprobar como ejemplo de entrenamiento */}
+                <div className="mt-3 pt-3 border-t border-border-subtle flex items-center justify-between">
+                  <div className="text-[9px] text-text-ghost">
+                    Score global: <span className="font-bold" style={{ color: scoreColor(live.global) }}>{live.global}/100</span>
+                  </div>
+                  {approvedIds.has(scenario.id) ? (
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold" style={{ color: C.green }}>
+                      <span>✅</span> Guardado como ejemplo de entrenamiento
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleApprove}
+                      disabled={approving === scenario.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
+                      style={{ background: C.green + '15', color: C.green, border: `1px solid ${C.green}30` }}
+                    >
+                      {approving === scenario.id ? '⏳ Guardando...' : '✅ Aprobar — usar para entrenar'}
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
