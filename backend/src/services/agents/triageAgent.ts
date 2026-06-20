@@ -76,6 +76,7 @@ export async function triageAgent(message: string, history: Array<{ role: string
   let outputTokens = 0;
   let logPrompt = '';
   let logGeminiResponse = '';
+  let geminiError: string | null = null;
 
   try {
     if (geminiEnabled) {
@@ -84,10 +85,12 @@ export async function triageAgent(message: string, history: Array<{ role: string
       inputTokens = r.inputTokens; outputTokens = r.outputTokens;
       logPrompt = r.prompt; logGeminiResponse = r.geminiResponse;
     } else {
+      geminiError = 'GEMINI_API_KEY no configurada';
       ({ intent, confidence } = keywordTriage(message, history));
     }
   } catch (err: unknown) {
-    console.error('[TriageAgent] Gemini error:', err instanceof Error ? err.message : String(err));
+    geminiError = err instanceof Error ? err.message : String(err);
+    console.error('[TriageAgent] Gemini error:', geminiError);
     ({ intent, confidence } = keywordTriage(message, history));
   }
 
@@ -95,7 +98,7 @@ export async function triageAgent(message: string, history: Array<{ role: string
   await prisma.agentLog.create({
     data: {
       agent: 'TRIAJE', latencyMs, precision: confidence, volume: 1,
-      extraData: { inputTokens, outputTokens, userMessage: message, prompt: logPrompt, geminiResponse: logGeminiResponse },
+      extraData: { inputTokens, outputTokens, userMessage: message, prompt: logPrompt, geminiResponse: logGeminiResponse, geminiError },
     },
   }).catch(() => {});
 

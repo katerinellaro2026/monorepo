@@ -151,6 +151,7 @@ export async function analystAgent(
   let outputTokens = 0;
   let geminiPromptLog = '';
   let geminiResponseLog = '';
+  let geminiError: string | null = null;
 
   if (geminiEnabled) {
     try {
@@ -225,14 +226,15 @@ Instrucciones:
       geminiPromptLog = prompt;
       geminiResponseLog = response;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[AnalystAgent] Gemini error:', msg);
+      geminiError = err instanceof Error ? err.message : String(err);
+      console.error('[AnalystAgent] Gemini error:', geminiError);
       response = buildFallbackResponse(
         district ?? 'el distrito', estimatedPrice, low, high,
         avgPricePerSqmSOL, comparableProps.length, areaSqm, saleEval, rentEval
       );
     }
   } else {
+    geminiError = 'GEMINI_API_KEY no configurada';
     response = buildFallbackResponse(
       district ?? 'el distrito', estimatedPrice, low, high,
       avgPricePerSqmSOL, comparableProps.length, areaSqm, saleEval, rentEval
@@ -241,7 +243,7 @@ Instrucciones:
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'ANALISTA', latencyMs, precision: 0.93, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog } },
+    data: { agent: 'ANALISTA', latencyMs, precision: 0.93, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog, geminiError } },
   }).catch(() => {});
 
   return {

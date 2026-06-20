@@ -7,6 +7,7 @@ import { AGENT_PERSONAS } from '@/data/agentPersonas';
 interface GeminiLog {
   id: string; agent: string; latencyMs: number | null; createdAt: string;
   userMessage: string | null; prompt: string | null; geminiResponse: string | null;
+  geminiError: string | null;
   inputTokens: number; outputTokens: number; totalTokens: number;
   inputCostUsd: number; outputCostUsd: number; totalCostUsd: number;
 }
@@ -78,6 +79,17 @@ function LogCard({ log }: { log: GeminiLog }) {
           </div>
         </div>
       </div>
+
+      {/* Error de Gemini — visible cuando tokens = 0 */}
+      {log.geminiError && (
+        <div className="px-3 py-2 rounded-lg flex items-start gap-2" style={{ background: '#f43f5e10', border: '1px solid #f43f5e30' }}>
+          <span className="text-[11px] flex-shrink-0">⚠️</span>
+          <div>
+            <div className="text-[8.5px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#f43f5e' }}>Error Gemini — fallback activado</div>
+            <div className="text-[10px] font-mono" style={{ color: '#f43f5e' }}>{log.geminiError}</div>
+          </div>
+        </div>
+      )}
 
       {/* User message */}
       {log.userMessage && (

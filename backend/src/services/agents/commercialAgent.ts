@@ -172,6 +172,7 @@ export async function commercialAgent(
   let outputTokens = 0;
   let geminiPromptLog = '';
   let geminiResponseLog = '';
+  let geminiError: string | null = null;
 
   if (geminiEnabled) {
     try {
@@ -186,8 +187,11 @@ export async function commercialAgent(
       geminiPromptLog   = extracted.prompt;
       geminiResponseLog = extracted.geminiResponse;
     } catch (err: unknown) {
-      console.error('[CommercialAgent] Gemini error:', err instanceof Error ? err.message : String(err));
+      geminiError = err instanceof Error ? err.message : String(err);
+      console.error('[CommercialAgent] Gemini error:', geminiError);
     }
+  } else {
+    geminiError = 'GEMINI_API_KEY no configurada';
   }
 
   // NLP fallback: rellenar campos que Gemini no extrajo (o Gemini está offline)
@@ -281,7 +285,7 @@ export async function commercialAgent(
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'COMERCIAL', latencyMs, precision: leadCreated ? 1 : 0.35, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog } },
+    data: { agent: 'COMERCIAL', latencyMs, precision: leadCreated ? 1 : 0.35, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog, geminiError } },
   }).catch(() => {});
 
   return { response: responseText, extractedPhone: phone, extractedBudget: budget, leadCreated, userId, latencyMs };

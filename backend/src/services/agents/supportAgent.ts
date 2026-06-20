@@ -41,6 +41,7 @@ export async function supportAgent(
   let outputTokens = 0;
   let geminiPromptLog = '';
   let geminiResponseLog = '';
+  let geminiError: string | null = null;
 
   if (geminiEnabled) {
     try {
@@ -75,16 +76,18 @@ Usa markdown con tablas y negritas. Sé directo y útil. Máximo 200 palabras.`;
       geminiPromptLog   = prompt;
       geminiResponseLog = response;
     } catch (err: unknown) {
-      console.error('[SupportAgent] Gemini error:', err instanceof Error ? err.message : String(err));
+      geminiError = err instanceof Error ? err.message : String(err);
+      console.error('[SupportAgent] Gemini error:', geminiError);
       response = buildFallbackAcm(stats);
     }
   } else {
+    geminiError = 'GEMINI_API_KEY no configurada';
     response = buildFallbackAcm(stats);
   }
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'SOPORTE_B2B', latencyMs, precision: 0.94, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog } },
+    data: { agent: 'SOPORTE_B2B', latencyMs, precision: 0.94, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog, geminiError } },
   }).catch(() => {});
 
   return { response, reportType: 'ACM', latencyMs };

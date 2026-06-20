@@ -144,8 +144,8 @@ const metricsRoutes: FastifyPluginAsync = async (app) => {
       const offset = (page - 1) * limit;
 
       const where = req.query.agent
-        ? `WHERE agent = '${req.query.agent}' AND "extraData"->>'prompt' IS NOT NULL`
-        : `WHERE "extraData"->>'prompt' IS NOT NULL`;
+        ? `WHERE agent = '${req.query.agent}' AND "extraData" IS NOT NULL`
+        : `WHERE "extraData" IS NOT NULL`;
 
       type RawLog = {
         id: string; agent: string; latency_ms: number | null;
@@ -173,9 +173,10 @@ const metricsRoutes: FastifyPluginAsync = async (app) => {
           agent:         r.agent,
           latencyMs:     r.latency_ms,
           createdAt:     r.created_at,
-          userMessage:   ed.userMessage   ?? null,
-          prompt:        ed.prompt        ?? null,
+          userMessage:   ed.userMessage    ?? null,
+          prompt:        ed.prompt         ?? null,
           geminiResponse: ed.geminiResponse ?? null,
+          geminiError:   ed.geminiError    ?? null,
           inputTokens:   inp,
           outputTokens:  out,
           totalTokens:   inp + out,
