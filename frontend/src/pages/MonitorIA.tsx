@@ -43,8 +43,8 @@ function LogCard({ log }: { log: GeminiLog }) {
   const [expandResponse, setExpandResponse] = useState(false);
   const persona = AGENT_PERSONAS[log.agent] ?? { name: log.agent, color: C.slate, avatar: '' };
   const ts = new Date(log.createdAt);
-  const dateStr = ts.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
-  const timeStr = ts.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = ts.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeStr = ts.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
   return (
     <div className="bg-bg-card border border-border-subtle rounded-card p-4 space-y-3">
