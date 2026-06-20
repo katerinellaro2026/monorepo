@@ -140,28 +140,24 @@ function CulturaGeneral() {
 /* ─── 2. IDENTIDAD DE AGENTES ────────────────────────────────────── */
 const AGENT_DETAILS = {
   TRIAJE: {
-    bio: 'Sofía nació en el departamento de Atención al Cliente de una gran inmobiliaria limeña. Frustrada por la ineficiencia de enrutar consultas manualmente, se capacitó en inteligencia artificial para convertirse en la mejor coordinadora digital de Lima.',
     valores: ['Empatía ante todo', 'Claridad en el enrutamiento', 'Rapidez de respuesta'],
     estilo: 'Cálida, eficiente, nunca burocrática. Siempre saluda con nombre y ofrece opciones concretas.',
     debilidades: 'En consultas muy ambiguas con múltiples intents mezclados, puede requerir un turno extra para clasificar.',
     culturalScore: 95,
   },
   ANALISTA: {
-    bio: 'Carlos tiene 12 años de experiencia como tasador certificado en Lima. Al ver que el mercado inmobiliario carecía de datos accesibles para compradores comunes, decidió volcar su expertise en un agente IA que democratice la valuación.',
     valores: ['Datos sobre opiniones', 'Transparencia en cifras', 'Honestidad sobre incertidumbre'],
     estilo: 'Preciso y formal, pero accesible. Cita fuentes explícitamente. Compara siempre contra el BCRP.',
     debilidades: 'En distritos sin cobertura, su respuesta es más genérica. Con propiedades atípicas (penthouses, locales comerciales) su precisión cae.',
     culturalScore: 92,
   },
   COMERCIAL: {
-    bio: 'Diego trabajó 6 años como SDR en el sector inmobiliario. Conoce el dolor de perder leads por falta de datos completos. Diseñó su flujo de calificación para ser amigable, nunca invasivo, y siempre orientado al valor para el cliente.',
     valores: ['No presión, nunca', 'Respeto por la privacidad', 'Conversación natural'],
     estilo: 'Conversacional y cálido. Usa el nombre del cliente tan pronto como lo conoce. Nunca pide dos datos en el mismo turno.',
     debilidades: 'En conversaciones muy cortas (1-2 turnos), puede necesitar más contexto para extraer los 4 datos completos.',
     culturalScore: 91,
   },
   SOPORTE_B2B: {
-    bio: 'Valeria tiene un MBA con especialización en Real Estate y 8 años asesorando a corredores inmobiliarios en Lima. Creó el módulo de ACM automatizado para que ningún corredor tenga que pasar 4 horas preparando un reporte.',
     valores: ['Orientación al corredor', 'Calidad sobre velocidad', 'Honestidad sobre cobertura'],
     estilo: 'Profesional y directa. Estructura sus respuestas en secciones claras. Siempre cita precio/m² BCRP como ancla.',
     debilidades: 'En distritos sin propiedades reales en la BD, el ACM se basa solo en BCRP, reduciendo la riqueza comparativa.',
@@ -209,9 +205,6 @@ function AgentIdentityCard({ agentKey }: { agentKey: string }) {
       <div className="italic text-[11.5px] text-text-secondary mb-3 pl-2 border-l-2" style={{ borderColor: persona.color }}>
         "{persona.tagline}"
       </div>
-
-      {/* Bio */}
-      <p className="text-[11px] text-text-ghost leading-relaxed mb-3">{detail.bio}</p>
 
       {/* Valores del agente */}
       <div className="mb-3">
