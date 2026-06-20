@@ -39,17 +39,23 @@ function TokenBadge({ label, value, color }: { label: string; value: number | st
   );
 }
 
+const PROMPT_PREVIEW = 300;
+const RESPONSE_PREVIEW = 400;
+
 function LogCard({ log }: { log: GeminiLog }) {
-  const [expandPrompt, setExpandPrompt] = useState(false);
-  const [expandResponse, setExpandResponse] = useState(false);
+  const [fullPrompt, setFullPrompt] = useState(false);
+  const [fullResponse, setFullResponse] = useState(false);
   const persona = AGENT_PERSONAS[log.agent] ?? { name: log.agent, color: C.slate, avatar: '' };
   const ts = new Date(log.createdAt);
   const dateStr = ts.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
   const timeStr = ts.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+  const promptText   = log.prompt ?? '';
+  const responseText = log.geminiResponse ?? '';
+
   return (
     <div className="bg-bg-card border border-border-subtle rounded-card p-4 space-y-3">
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           {persona.avatar && (
@@ -66,12 +72,10 @@ function LogCard({ log }: { log: GeminiLog }) {
             <div className="text-[9px] text-text-ghost mt-0.5">{dateStr} · {timeStr}</div>
           </div>
         </div>
-
-        {/* Token + cost badges */}
         <div className="flex items-center gap-2 flex-wrap justify-end">
-          <TokenBadge label="entrada" value={log.inputTokens.toLocaleString()} color={C.teal} />
-          <TokenBadge label="salida"  value={log.outputTokens.toLocaleString()} color={C.violet} />
-          <TokenBadge label="total"   value={log.totalTokens.toLocaleString()} color={C.indigo} />
+          <TokenBadge label="entrada"  value={log.inputTokens.toLocaleString()}  color={C.teal}   />
+          <TokenBadge label="salida"   value={log.outputTokens.toLocaleString()} color={C.violet} />
+          <TokenBadge label="total"    value={log.totalTokens.toLocaleString()}  color={C.indigo} />
           <TokenBadge label="latencia" value={log.latencyMs ? `${log.latencyMs}ms` : '—'} color={C.slate} />
           <div className="flex flex-col items-center px-2.5 py-1 rounded-lg" style={{ background: `${C.amber}12`, border: `1px solid ${C.amber}25` }}>
             <span className="text-[11px] font-black" style={{ color: C.amber }}>${log.totalCostUsd.toFixed(5)}</span>
@@ -80,10 +84,10 @@ function LogCard({ log }: { log: GeminiLog }) {
         </div>
       </div>
 
-      {/* Error de Gemini — visible cuando tokens = 0 */}
+      {/* Error banner */}
       {log.geminiError && (
         <div className="px-3 py-2 rounded-lg flex items-start gap-2" style={{ background: '#f43f5e10', border: '1px solid #f43f5e30' }}>
-          <span className="text-[11px] flex-shrink-0">⚠️</span>
+          <span className="flex-shrink-0">⚠️</span>
           <div>
             <div className="text-[8.5px] font-bold uppercase tracking-wider mb-0.5" style={{ color: '#f43f5e' }}>Error Gemini — fallback activado</div>
             <div className="text-[10px] font-mono" style={{ color: '#f43f5e' }}>{log.geminiError}</div>
@@ -91,61 +95,67 @@ function LogCard({ log }: { log: GeminiLog }) {
         </div>
       )}
 
-      {/* User message */}
+      {/* Mensaje del usuario */}
       {log.userMessage && (
-        <div className="px-3 py-2 rounded-lg" style={{ background: `${C.indigo}08`, border: `1px solid ${C.indigo}18` }}>
+        <div className="px-3 py-2 rounded-lg" style={{ background: `${C.indigo}08`, border: `1px solid ${C.indigo}20` }}>
           <div className="text-[8.5px] font-bold uppercase tracking-wider text-text-ghost mb-1">Mensaje del usuario</div>
           <div className="text-[10.5px] text-text-secondary">{log.userMessage}</div>
         </div>
       )}
 
-      {/* Prompt expandible */}
-      {log.prompt && (
-        <div>
-          <button
-            onClick={() => setExpandPrompt((v) => !v)}
-            className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-white/[0.03]"
-            style={{ border: `1px solid ${C.teal}25`, background: `${C.teal}06` }}
-          >
-            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: C.teal }}>
-              {expandPrompt ? '▼' : '▶'} Prompt enviado a Gemini
-            </span>
-            <span className="ml-auto text-[8.5px] text-text-ghost">
-              ~{log.inputTokens.toLocaleString()} tokens entrada · {log.prompt.length.toLocaleString()} chars
-            </span>
-          </button>
-          {expandPrompt && (
-            <pre className="mt-1 p-3 rounded-lg overflow-x-auto text-[9.5px] leading-relaxed whitespace-pre-wrap break-words font-mono"
-              style={{ background: '#0d1117', color: '#e6edf3', border: `1px solid ${C.teal}20`, maxHeight: '400px', overflowY: 'auto' }}>
-              {log.prompt}
-            </pre>
+      {/* Prompt enviado a Gemini — siempre visible */}
+      <div style={{ border: `1px solid ${C.teal}25`, borderRadius: '10px', overflow: 'hidden' }}>
+        <div className="flex items-center justify-between px-3 py-2" style={{ background: `${C.teal}08` }}>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: C.teal }}>📤 Prompt enviado a Gemini</span>
+            <span className="text-[8px] text-text-ghost">{log.inputTokens > 0 ? `${log.inputTokens.toLocaleString()} tokens` : ''} · {promptText.length.toLocaleString()} chars</span>
+          </div>
+          {promptText.length > PROMPT_PREVIEW && (
+            <button onClick={() => setFullPrompt(v => !v)}
+              className="text-[8.5px] font-bold px-2 py-0.5 rounded"
+              style={{ background: `${C.teal}20`, color: C.teal }}>
+              {fullPrompt ? 'Contraer' : 'Ver completo'}
+            </button>
           )}
         </div>
-      )}
+        {promptText ? (
+          <pre className="p-3 text-[9.5px] leading-relaxed whitespace-pre-wrap break-words font-mono overflow-y-auto"
+            style={{ background: '#0d1117', color: '#e6edf3', maxHeight: fullPrompt ? '600px' : '160px' }}>
+            {fullPrompt ? promptText : promptText.slice(0, PROMPT_PREVIEW) + (promptText.length > PROMPT_PREVIEW ? '\n…' : '')}
+          </pre>
+        ) : (
+          <div className="p-3 text-[9.5px] text-text-ghost italic" style={{ background: '#0d1117' }}>
+            Sin prompt registrado — Gemini no fue invocado en esta interacción.
+          </div>
+        )}
+      </div>
 
-      {/* Response expandible */}
-      {log.geminiResponse && (
-        <div>
-          <button
-            onClick={() => setExpandResponse((v) => !v)}
-            className="flex items-center gap-2 w-full text-left px-3 py-2 rounded-lg transition-colors hover:bg-white/[0.03]"
-            style={{ border: `1px solid ${C.green}25`, background: `${C.green}06` }}
-          >
-            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: C.green }}>
-              {expandResponse ? '▼' : '▶'} Respuesta de Gemini
-            </span>
-            <span className="ml-auto text-[8.5px] text-text-ghost">
-              ~{log.outputTokens.toLocaleString()} tokens salida · {log.geminiResponse.length.toLocaleString()} chars
-            </span>
-          </button>
-          {expandResponse && (
-            <pre className="mt-1 p-3 rounded-lg overflow-x-auto text-[9.5px] leading-relaxed whitespace-pre-wrap break-words font-mono"
-              style={{ background: '#0d1117', color: '#a8ff78', border: `1px solid ${C.green}20`, maxHeight: '400px', overflowY: 'auto' }}>
-              {log.geminiResponse}
-            </pre>
+      {/* Respuesta de Gemini — siempre visible */}
+      <div style={{ border: `1px solid ${C.green}25`, borderRadius: '10px', overflow: 'hidden' }}>
+        <div className="flex items-center justify-between px-3 py-2" style={{ background: `${C.green}08` }}>
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: C.green }}>💬 Respuesta de Gemini</span>
+            <span className="text-[8px] text-text-ghost">{log.outputTokens > 0 ? `${log.outputTokens.toLocaleString()} tokens` : ''} · {responseText.length.toLocaleString()} chars</span>
+          </div>
+          {responseText.length > RESPONSE_PREVIEW && (
+            <button onClick={() => setFullResponse(v => !v)}
+              className="text-[8.5px] font-bold px-2 py-0.5 rounded"
+              style={{ background: `${C.green}20`, color: C.green }}>
+              {fullResponse ? 'Contraer' : 'Ver completo'}
+            </button>
           )}
         </div>
-      )}
+        {responseText ? (
+          <pre className="p-3 text-[9.5px] leading-relaxed whitespace-pre-wrap break-words font-mono overflow-y-auto"
+            style={{ background: '#0d1117', color: '#a8ff78', maxHeight: fullResponse ? '600px' : '140px' }}>
+            {fullResponse ? responseText : responseText.slice(0, RESPONSE_PREVIEW) + (responseText.length > RESPONSE_PREVIEW ? '\n…' : '')}
+          </pre>
+        ) : (
+          <div className="p-3 text-[9.5px] text-text-ghost italic" style={{ background: '#0d1117' }}>
+            Sin respuesta registrada — revisar error arriba.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
