@@ -32,7 +32,7 @@ function keywordTriage(message: string, history: Array<{ role: string; content: 
 }
 
 // ── Gemini triage ─────────────────────────────────────────────────────────────
-async function geminiTriage(message: string, history: Array<{ role: string; content: string }>): Promise<{ intent: Intent; confidence: number; inputTokens: number; outputTokens: number }> {
+async function geminiTriage(message: string, history: Array<{ role: string; content: string }>): Promise<{ intent: Intent; confidence: number; inputTokens: number; outputTokens: number; prompt: string; geminiResponse: string }> {
   const flash = getFlashModel(true);
   const historySnippet = history.slice(-4).map((h) => `${h.role}: ${h.content}`).join('\n');
 
@@ -54,13 +54,15 @@ Ejemplo de respuesta: {"intent": "VALUATION", "confidence": 0.92}`;
 
   const result = await flash.generateContent(prompt);
   const meta = result.response.usageMetadata;
-  const text = result.response.text();
-  const parsed = JSON.parse(text) as { intent: Intent; confidence: number };
+  const geminiResponse = result.response.text();
+  const parsed = JSON.parse(geminiResponse) as { intent: Intent; confidence: number };
   return {
     intent: parsed.intent ?? 'GENERAL',
     confidence: parsed.confidence ?? 0.7,
     inputTokens: meta?.promptTokenCount ?? 0,
     outputTokens: meta?.candidatesTokenCount ?? 0,
+    prompt,
+    geminiResponse,
   };
 }
 
@@ -72,10 +74,15 @@ export async function triageAgent(message: string, history: Array<{ role: string
   let confidence: number;
   let inputTokens = 0;
   let outputTokens = 0;
+  let logPrompt = '';
+  let logGeminiResponse = '';
 
   try {
     if (geminiEnabled) {
-      ({ intent, confidence, inputTokens, outputTokens } = await geminiTriage(message, history));
+      const r = await geminiTriage(message, history);
+      intent = r.intent; confidence = r.confidence;
+      inputTokens = r.inputTokens; outputTokens = r.outputTokens;
+      logPrompt = r.prompt; logGeminiResponse = r.geminiResponse;
     } else {
       ({ intent, confidence } = keywordTriage(message, history));
     }
@@ -86,7 +93,10 @@ export async function triageAgent(message: string, history: Array<{ role: string
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'TRIAJE', latencyMs, precision: confidence, volume: 1, extraData: { inputTokens, outputTokens } },
+    data: {
+      agent: 'TRIAJE', latencyMs, precision: confidence, volume: 1,
+      extraData: { inputTokens, outputTokens, userMessage: message, prompt: logPrompt, geminiResponse: logGeminiResponse },
+    },
   }).catch(() => {});
 
   return { intent, confidence, latencyMs };

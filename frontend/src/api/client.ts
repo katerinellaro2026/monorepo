@@ -5,7 +5,7 @@ import type { DashboardMetrics, RevenueByMonth, Transaction, Lead, Property, Sub
 // In dev it's undefined → fall back to Vite proxy at /api
 const BACKEND_ORIGIN = import.meta.env.VITE_API_URL ?? '';
 
-const api = axios.create({
+export const api = axios.create({
   baseURL: BACKEND_ORIGIN ? `${BACKEND_ORIGIN}/api` : '/api',
 });
 

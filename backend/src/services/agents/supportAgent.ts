@@ -39,6 +39,8 @@ export async function supportAgent(
   let response: string;
   let inputTokens = 0;
   let outputTokens = 0;
+  let geminiPromptLog = '';
+  let geminiResponseLog = '';
 
   if (geminiEnabled) {
     try {
@@ -67,9 +69,11 @@ Genera un ACM profesional en español con:
 Usa markdown con tablas y negritas. Sé directo y útil. Máximo 200 palabras.`;
 
       const result = await model.generateContent(prompt);
-      inputTokens = result.response.usageMetadata?.promptTokenCount ?? 0;
-      outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0;
-      response = result.response.text();
+      inputTokens       = result.response.usageMetadata?.promptTokenCount ?? 0;
+      outputTokens      = result.response.usageMetadata?.candidatesTokenCount ?? 0;
+      response          = result.response.text();
+      geminiPromptLog   = prompt;
+      geminiResponseLog = response;
     } catch (err: unknown) {
       console.error('[SupportAgent] Gemini error:', err instanceof Error ? err.message : String(err));
       response = buildFallbackAcm(stats);
@@ -80,7 +84,7 @@ Usa markdown con tablas y negritas. Sé directo y útil. Máximo 200 palabras.`;
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'SOPORTE_B2B', latencyMs, precision: 0.94, volume: 1, extraData: { inputTokens, outputTokens } },
+    data: { agent: 'SOPORTE_B2B', latencyMs, precision: 0.94, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog } },
   }).catch(() => {});
 
   return { response, reportType: 'ACM', latencyMs };

@@ -93,6 +93,8 @@ interface GeminiExtraction {
   response: string;
   inputTokens: number;
   outputTokens: number;
+  prompt: string;
+  geminiResponse: string;
 }
 
 async function geminiCommercial(
@@ -144,8 +146,10 @@ Devuelve SOLO JSON válido:
   const text = result.response.text();
   const parsed = JSON.parse(text) as GeminiExtraction;
   if (!parsed.currency) parsed.currency = 'SOL';
-  parsed.inputTokens = meta?.promptTokenCount ?? 0;
-  parsed.outputTokens = meta?.candidatesTokenCount ?? 0;
+  parsed.inputTokens   = meta?.promptTokenCount ?? 0;
+  parsed.outputTokens  = meta?.candidatesTokenCount ?? 0;
+  parsed.prompt        = prompt;
+  parsed.geminiResponse = text;
   return parsed;
 }
 
@@ -166,17 +170,21 @@ export async function commercialAgent(
   let responseText: string;
   let inputTokens = 0;
   let outputTokens = 0;
+  let geminiPromptLog = '';
+  let geminiResponseLog = '';
 
   if (geminiEnabled) {
     try {
       const extracted = await geminiCommercial(message, history);
-      phone        = extracted.phone;
-      budget       = extracted.budget;
-      currency     = extracted.currency ?? 'SOL';
-      name         = extracted.name;
-      district     = extracted.district;
-      inputTokens  = extracted.inputTokens;
-      outputTokens = extracted.outputTokens;
+      phone             = extracted.phone;
+      budget            = extracted.budget;
+      currency          = extracted.currency ?? 'SOL';
+      name              = extracted.name;
+      district          = extracted.district;
+      inputTokens       = extracted.inputTokens;
+      outputTokens      = extracted.outputTokens;
+      geminiPromptLog   = extracted.prompt;
+      geminiResponseLog = extracted.geminiResponse;
     } catch (err: unknown) {
       console.error('[CommercialAgent] Gemini error:', err instanceof Error ? err.message : String(err));
     }
@@ -273,7 +281,7 @@ export async function commercialAgent(
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'COMERCIAL', latencyMs, precision: leadCreated ? 1 : 0.35, volume: 1, extraData: { inputTokens, outputTokens } },
+    data: { agent: 'COMERCIAL', latencyMs, precision: leadCreated ? 1 : 0.35, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog } },
   }).catch(() => {});
 
   return { response: responseText, extractedPhone: phone, extractedBudget: budget, leadCreated, userId, latencyMs };

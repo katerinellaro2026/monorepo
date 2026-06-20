@@ -149,6 +149,8 @@ export async function analystAgent(
   let response: string;
   let inputTokens = 0;
   let outputTokens = 0;
+  let geminiPromptLog = '';
+  let geminiResponseLog = '';
 
   if (geminiEnabled) {
     try {
@@ -220,6 +222,8 @@ Instrucciones:
       inputTokens = result.response.usageMetadata?.promptTokenCount ?? 0;
       outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0;
       response = result.response.text();
+      geminiPromptLog = prompt;
+      geminiResponseLog = response;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error('[AnalystAgent] Gemini error:', msg);
@@ -237,7 +241,7 @@ Instrucciones:
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'ANALISTA', latencyMs, precision: 0.93, volume: 1, extraData: { inputTokens, outputTokens } },
+    data: { agent: 'ANALISTA', latencyMs, precision: 0.93, volume: 1, extraData: { inputTokens, outputTokens, userMessage: message, prompt: geminiPromptLog, geminiResponse: geminiResponseLog } },
   }).catch(() => {});
 
   return {

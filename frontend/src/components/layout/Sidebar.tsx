@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, BarChart3, Home, LogOut, Map, GitFork, Activity, Network, Users } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, BarChart3, Home, LogOut, Map, GitFork, Activity, Network, Users, Terminal } from 'lucide-react';
 import { logout } from '@/api/client';
 
 interface NavItem {
@@ -21,7 +21,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/mapa-procesos',   icon: <GitFork size={18} />,  label: 'Mapa de Procesos',  roles: ['BROKER', 'ADMIN'] },
   { to: '/simulador-bsc',   icon: <Activity size={18} />, label: 'Métricas & Simulador', roles: ['BROKER', 'ADMIN'] },
   { to: '/estructura-ia',        icon: <Network size={18} />, label: 'Estructura IA',         roles: ['BROKER', 'ADMIN'] },
-  { to: '/cultura-organizacional', icon: <Users size={18} />,   label: 'Cultura Organizacional', roles: ['BROKER', 'ADMIN'] },
+  { to: '/cultura-organizacional', icon: <Users size={18} />,     label: 'Cultura Organizacional', roles: ['BROKER', 'ADMIN'] },
+  { to: '/monitor-ia',             icon: <Terminal size={18} />,  label: 'Monitor IA — Logs',      roles: ['ADMIN'] },
 ];
 
 export default function Sidebar({ role }: SidebarProps) {

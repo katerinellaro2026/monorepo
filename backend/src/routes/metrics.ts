@@ -133,6 +133,62 @@ const metricsRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
+  // Logs de Gemini con prompt y respuesta completos
+  app.get<{ Querystring: { agent?: string; limit?: string; page?: string } }>(
+    '/gemini-logs',
+    { preHandler: requireAdmin },
+    async (req) => {
+      const { prisma } = await import('../index');
+      const limit  = Math.min(parseInt(req.query.limit ?? '20'), 50);
+      const page   = Math.max(parseInt(req.query.page  ?? '1'), 1);
+      const offset = (page - 1) * limit;
+
+      const where = req.query.agent
+        ? `WHERE agent = '${req.query.agent}' AND "extraData"->>'prompt' IS NOT NULL`
+        : `WHERE "extraData"->>'prompt' IS NOT NULL`;
+
+      type RawLog = {
+        id: string; agent: string; latency_ms: number | null;
+        created_at: Date; extra_data: Record<string, unknown>;
+        total: bigint;
+      };
+
+      const rows: RawLog[] = await prisma.$queryRawUnsafe(`
+        SELECT id, agent, "latencyMs" AS latency_ms, "createdAt" AS created_at,
+               "extraData" AS extra_data,
+               COUNT(*) OVER() AS total
+        FROM agent_logs
+        ${where}
+        ORDER BY "createdAt" DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+
+      const total = rows[0] ? Number(rows[0].total) : 0;
+      const logs = rows.map((r) => {
+        const ed = r.extra_data as Record<string, unknown>;
+        const inp = Number(ed.inputTokens  ?? 0);
+        const out = Number(ed.outputTokens ?? 0);
+        return {
+          id:            r.id,
+          agent:         r.agent,
+          latencyMs:     r.latency_ms,
+          createdAt:     r.created_at,
+          userMessage:   ed.userMessage   ?? null,
+          prompt:        ed.prompt        ?? null,
+          geminiResponse: ed.geminiResponse ?? null,
+          inputTokens:   inp,
+          outputTokens:  out,
+          totalTokens:   inp + out,
+          inputCostUsd:  +((inp  / 1_000_000) * 0.10).toFixed(6),
+          outputCostUsd: +((out / 1_000_000) * 0.40).toFixed(6),
+          totalCostUsd:  +(((inp / 1_000_000) * 0.10) + ((out / 1_000_000) * 0.40)).toFixed(6),
+        };
+      });
+
+      return { logs, total, page, limit, pages: Math.ceil(total / limit) };
+    },
+  );
+
   // Token usage & cost stats por agente
   app.get('/token-stats', { preHandler: requireAdmin }, async () => {
     const { prisma } = await import('../index');

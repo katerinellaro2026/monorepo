@@ -9,6 +9,7 @@ import MapaProcesos from '@/pages/MapaProcesos';
 import SimuladorBSC from '@/pages/SimuladorBSC';
 import EstructuraIA from '@/pages/EstructuraIA';
 import CulturaOrganizacional from '@/pages/CulturaOrganizacional';
+import MonitorIA from '@/pages/MonitorIA';
 
 function getRole(): string | null {
   return localStorage.getItem('inmodata_role');
@@ -128,6 +129,18 @@ export default function App() {
             <PrivateRoute requiredRoles={['BROKER', 'ADMIN']}>
               <AppLayout>
                 <CulturaOrganizacional />
+              </AppLayout>
+            </PrivateRoute>
+          }
+        />
+
+        {/* Private — ADMIN only */}
+        <Route
+          path="/monitor-ia"
+          element={
+            <PrivateRoute requiredRoles={['ADMIN']}>
+              <AppLayout>
+                <MonitorIA />
               </AppLayout>
             </PrivateRoute>
           }
