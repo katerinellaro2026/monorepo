@@ -164,6 +164,75 @@ const trainingRoutes: FastifyPluginAsync = async (app) => {
       return { ok: true };
     },
   );
+
+  // Estadísticas de entrenamiento por agente — para panel de jurado
+  app.get(
+    '/stats',
+    { preHandler: requireBrokerOrAdmin },
+    async () => {
+      const { prisma } = await import('../index');
+      const agentKeys = ['TRIAJE', 'ANALISTA', 'COMERCIAL', 'SOPORTE_B2B'];
+
+      const byAgent = await Promise.all(
+        agentKeys.map(async (agentKey) => {
+          const examples = await prisma.trainingExample.findMany({
+            where: { agentKey },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          });
+
+          const count = examples.length;
+          const lastApproved = examples[0]?.createdAt?.toISOString() ?? null;
+          const firstApproved = examples[examples.length - 1]?.createdAt?.toISOString() ?? null;
+
+          // Avg scores from stored JSON
+          let avgScores: { precision: number; empathy: number; claridad: number; adherencia: number } | null = null;
+          const withScores = examples.filter((e) => e.scores && typeof e.scores === 'object');
+          if (withScores.length > 0) {
+            const sum = withScores.reduce(
+              (acc, e) => {
+                const s = e.scores as Record<string, number>;
+                return {
+                  precision:  acc.precision  + (s.precision  ?? 0),
+                  empathy:    acc.empathy    + (s.empathy    ?? 0),
+                  claridad:   acc.claridad   + (s.claridad   ?? 0),
+                  adherencia: acc.adherencia + (s.adherencia ?? 0),
+                };
+              },
+              { precision: 0, empathy: 0, claridad: 0, adherencia: 0 }
+            );
+            const n = withScores.length;
+            avgScores = {
+              precision:  Math.round(sum.precision  / n),
+              empathy:    Math.round(sum.empathy    / n),
+              claridad:   Math.round(sum.claridad   / n),
+              adherencia: Math.round(sum.adherencia / n),
+            };
+          }
+
+          const recent = examples.slice(0, 5).map((e) => ({
+            id: e.id,
+            scenarioId: e.scenarioId,
+            userMessage: e.userMessage.slice(0, 80) + (e.userMessage.length > 80 ? '…' : ''),
+            createdAt: e.createdAt.toISOString(),
+            scores: e.scores,
+          }));
+
+          return { agentKey, count, lastApproved, firstApproved, avgScores, recent };
+        })
+      );
+
+      const total = byAgent.reduce((s, a) => s + a.count, 0);
+      const agentsTrained = byAgent.filter((a) => a.count > 0).length;
+      const lastActivity = byAgent
+        .map((a) => a.lastApproved)
+        .filter(Boolean)
+        .sort()
+        .reverse()[0] ?? null;
+
+      return { total, agentsTrained, lastActivity, byAgent };
+    },
+  );
 };
 
 export default trainingRoutes;

@@ -112,6 +112,27 @@ export async function deleteTrainingExample(id: string): Promise<void> {
   await api.delete(`/training/examples/${id}`);
 }
 
+export interface TrainingAgentStats {
+  agentKey: string;
+  count: number;
+  lastApproved: string | null;
+  firstApproved: string | null;
+  avgScores: { precision: number; empathy: number; claridad: number; adherencia: number } | null;
+  recent: Array<{ id: string; scenarioId: string | null; userMessage: string; createdAt: string; scores: object | null }>;
+}
+
+export interface TrainingStats {
+  total: number;
+  agentsTrained: number;
+  lastActivity: string | null;
+  byAgent: TrainingAgentStats[];
+}
+
+export async function fetchTrainingStats(): Promise<TrainingStats> {
+  const { data } = await api.get('/training/stats');
+  return data;
+}
+
 // ── Training ──────────────────────────────────────────────────────────────────
 
 export interface TrainingScores {

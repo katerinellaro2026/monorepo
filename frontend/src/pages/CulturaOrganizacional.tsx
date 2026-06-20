@@ -1,7 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { AGENT_PERSONAS } from '@/data/agentPersonas';
-import { runTrainingScenario, approveTrainingExample, type TrainingRunResult } from '@/api/client';
+import {
+  runTrainingScenario, approveTrainingExample, fetchTrainingStats,
+  type TrainingRunResult, type TrainingStats, type TrainingAgentStats,
+} from '@/api/client';
 
 /* ─── Tokens ─────────────────────────────────────────────────────── */
 const C = {
@@ -922,6 +925,464 @@ function ListaParaPrueba() {
   );
 }
 
+/* ─── 6. PANEL DE ENTRENAMIENTO IA — PARA JURADO ────────────────── */
+
+const AGENT_BASELINE: Record<string, { precision: number; empathy: number; claridad: number; adherencia: number }> = {
+  TRIAJE:      { precision: 76, empathy: 80, claridad: 82, adherencia: 78 },
+  ANALISTA:    { precision: 85, empathy: 70, claridad: 78, adherencia: 74 },
+  COMERCIAL:   { precision: 79, empathy: 84, claridad: 76, adherencia: 80 },
+  SOPORTE_B2B: { precision: 82, empathy: 72, claridad: 80, adherencia: 76 },
+};
+
+function ScoreBar({ label, value, baseline, color }: { label: string; value: number; baseline: number; color: string }) {
+  const delta = value - baseline;
+  return (
+    <div className="mb-2">
+      <div className="flex justify-between items-center mb-0.5">
+        <span className="text-[9px] text-text-ghost capitalize">{label}</span>
+        <div className="flex items-center gap-1.5">
+          {delta !== 0 && (
+            <span className="text-[8px] font-bold" style={{ color: delta > 0 ? C.green : C.rose }}>
+              {delta > 0 ? '+' : ''}{delta}
+            </span>
+          )}
+          <span className="text-[10px] font-black" style={{ color }}>{value}</span>
+        </div>
+      </div>
+      <div className="relative w-full h-1.5 bg-white/[0.06] rounded-full">
+        {/* Baseline */}
+        <div className="absolute top-0 left-0 h-1.5 rounded-full opacity-30" style={{ width: `${baseline}%`, background: color }} />
+        {/* Current */}
+        <div className="absolute top-0 left-0 h-1.5 rounded-full transition-all duration-700" style={{ width: `${value}%`, background: color }} />
+        {/* Baseline marker */}
+        <div className="absolute top-[-3px] h-[9px] w-0.5 rounded opacity-60" style={{ left: `${baseline}%`, background: '#fff' }} />
+      </div>
+    </div>
+  );
+}
+
+function AgentTrainingCard({ stat, liveResult }: { stat: TrainingAgentStats; liveResult: { global: number; scores: { precision: number; empathy: number; claridad: number; adherencia: number } } | null }) {
+  const persona = AGENT_PERSONAS[stat.agentKey];
+  const baseline = AGENT_BASELINE[stat.agentKey];
+  const trained = stat.avgScores ?? (liveResult ? {
+    precision: liveResult.scores.precision, empathy: liveResult.scores.empathy,
+    claridad: liveResult.scores.claridad, adherencia: liveResult.scores.adherencia,
+  } : null);
+  const hasTraining = stat.count > 0;
+  const globalTrained = trained ? Math.round((trained.precision + trained.empathy + trained.claridad + trained.adherencia) / 4) : null;
+  const globalBaseline = Math.round((baseline.precision + baseline.empathy + baseline.claridad + baseline.adherencia) / 4);
+  const delta = globalTrained !== null ? globalTrained - globalBaseline : 0;
+
+  return (
+    <Card style={{ borderTop: `3px solid ${persona.color}` }}>
+      {/* Header */}
+      <div className="flex items-center gap-2.5 mb-3">
+        <img src={persona.avatar} alt={persona.name} className="w-10 h-10 rounded-lg object-cover" />
+        <div className="flex-1 min-w-0">
+          <div className="text-[11.5px] font-black text-text-primary truncate">{persona.name}</div>
+          <div className="text-[9px]" style={{ color: persona.color }}>{persona.role}</div>
+        </div>
+        {hasTraining ? (
+          <div className="text-center">
+            <div className="text-[18px] font-black" style={{ color: C.green }}>{stat.count}</div>
+            <div className="text-[7.5px] text-text-ghost leading-tight">ejemplos<br/>aprobados</div>
+          </div>
+        ) : (
+          <div className="text-[8px] px-2 py-1 rounded-lg border border-border-subtle text-text-ghost">Sin datos</div>
+        )}
+      </div>
+
+      {/* Score global delta */}
+      {globalTrained !== null ? (
+        <div className="flex items-center gap-3 mb-3 p-2 rounded-lg" style={{ background: `${persona.color}08`, border: `1px solid ${persona.color}20` }}>
+          <div className="text-center flex-1">
+            <div className="text-[10px] text-text-ghost mb-0.5">Baseline</div>
+            <div className="text-[20px] font-black text-text-ghost">{globalBaseline}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-[18px]">→</div>
+            <div className="text-[9px] font-black" style={{ color: delta >= 0 ? C.green : C.rose }}>
+              {delta > 0 ? '+' : ''}{delta}
+            </div>
+          </div>
+          <div className="text-center flex-1">
+            <div className="text-[10px] text-text-ghost mb-0.5">Entrenado</div>
+            <div className="text-[20px] font-black" style={{ color: persona.color }}>{globalTrained}</div>
+          </div>
+        </div>
+      ) : (
+        <div className="mb-3 p-2 rounded-lg text-center" style={{ background: `${C.amber}08`, border: `1px solid ${C.amber}20` }}>
+          <div className="text-[9px] text-text-ghost">Baseline: <span className="font-bold text-text-muted">{globalBaseline}/100</span></div>
+          <div className="text-[8.5px] text-text-ghost mt-0.5">Ejecuta escenarios o aprueba respuestas para ver evolución</div>
+        </div>
+      )}
+
+      {/* Scores por dimensión */}
+      {trained ? (
+        <div className="space-y-0.5">
+          {(['precision', 'empathy', 'claridad', 'adherencia'] as const).map((dim) => (
+            <ScoreBar
+              key={dim}
+              label={dim === 'empathy' ? 'empatía' : dim}
+              value={trained[dim]}
+              baseline={baseline[dim as keyof typeof baseline]}
+              color={persona.color}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-0.5 opacity-40">
+          {(['precision', 'empathy', 'claridad', 'adherencia'] as const).map((dim) => (
+            <ScoreBar key={dim} label={dim === 'empathy' ? 'empatía' : dim} value={baseline[dim as keyof typeof baseline]} baseline={baseline[dim as keyof typeof baseline]} color={persona.color} />
+          ))}
+        </div>
+      )}
+
+      {/* Última actividad */}
+      {stat.lastApproved && (
+        <div className="mt-2 pt-2 border-t border-border-subtle flex items-center gap-1.5">
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: C.green }} />
+          <span className="text-[8.5px] text-text-ghost">
+            Último ejemplo: {new Date(stat.lastApproved).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
+          </span>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function PanelEntrenamientoIA({ liveResults }: { liveResults: Record<string, TrainingRunResult> }) {
+  const [stats, setStats] = useState<TrainingStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<'overview' | 'history' | 'howit'>('overview');
+
+  useEffect(() => {
+    fetchTrainingStats()
+      .then(setStats)
+      .catch(() => setStats(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const agentKeys = ['TRIAJE', 'ANALISTA', 'COMERCIAL', 'SOPORTE_B2B'];
+
+  // Live avg global per agent from batch runs
+  const liveByAgent: Record<string, { global: number; scores: { precision: number; empathy: number; claridad: number; adherencia: number } } | null> = {};
+  agentKeys.forEach((key) => {
+    const scenarios = TRAINING_SCENARIOS.find((a) => a.agentKey === key)?.escenarios ?? [];
+    const ran = scenarios.filter((e) => liveResults[e.id]);
+    if (ran.length === 0) { liveByAgent[key] = null; return; }
+    const avg = (fn: (r: TrainingRunResult) => number) =>
+      Math.round(ran.reduce((s, e) => s + fn(liveResults[e.id]), 0) / ran.length);
+    liveByAgent[key] = {
+      global: avg((r) => r.global),
+      scores: {
+        precision:  avg((r) => r.scores.precision),
+        empathy:    avg((r) => r.scores.empathy),
+        claridad:   avg((r) => r.scores.claridad),
+        adherencia: avg((r) => r.scores.adherencia),
+      },
+    };
+  });
+
+  const totalExamples = stats?.total ?? 0;
+  const agentsTrained = stats?.agentsTrained ?? 0;
+  const totalLiveRan  = Object.keys(liveResults).length;
+
+  return (
+    <>
+      {/* KPIs de entrenamiento */}
+      <div className="grid grid-cols-4 gap-3 mb-4">
+        {[
+          { n: totalExamples, l: 'Ejemplos aprobados en BD', color: C.green, icon: '✅' },
+          { n: agentsTrained, l: 'Agentes con datos reales', color: C.teal, icon: '🤖' },
+          { n: totalLiveRan, l: 'Escenarios ejecutados hoy', color: C.indigo, icon: '⚡' },
+          { n: stats?.lastActivity
+              ? new Date(stats.lastActivity).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })
+              : '—',
+            l: 'Último entrenamiento', color: C.amber, icon: '🕐' },
+        ].map((k) => (
+          <div key={k.l} className="bg-bg-card rounded-card border border-border-subtle p-3 flex items-center gap-3">
+            <div className="text-2xl">{k.icon}</div>
+            <div>
+              <div className="text-[20px] font-black leading-none" style={{ color: k.color }}>{k.n}</div>
+              <div className="text-[9px] text-text-ghost leading-tight mt-0.5">{k.l}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 p-1 bg-bg-card rounded-xl border border-border-subtle w-fit">
+        {([
+          ['overview',  '📊 Evolución por agente'],
+          ['history',   '📋 Historial de ejemplos'],
+          ['howit',     '⚙️ Cómo funciona'],
+        ] as const).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="px-4 py-2 rounded-lg text-[10.5px] font-bold transition-all"
+            style={tab === t
+              ? { background: C.indigo, color: '#fff' }
+              : { color: '#94a3b8' }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* TAB: Evolución */}
+      {tab === 'overview' && (
+        <>
+          {loading ? (
+            <div className="text-center py-10 text-text-ghost text-[11px]">Cargando estadísticas desde la base de datos...</div>
+          ) : (
+            <div className="grid grid-cols-4 gap-3 mb-4">
+              {agentKeys.map((key) => {
+                const agentStat = stats?.byAgent.find((a) => a.agentKey === key) ?? {
+                  agentKey: key, count: 0, lastApproved: null, firstApproved: null, avgScores: null, recent: [],
+                };
+                return (
+                  <AgentTrainingCard
+                    key={key}
+                    stat={agentStat}
+                    liveResult={liveByAgent[key]}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Comparativa baseline vs entrenado — tabla */}
+          <Card className="mb-4">
+            <div className="text-[11px] font-semibold text-text-muted mb-3">
+              Comparativa scores: Baseline → Entrenado con ejemplos aprobados
+            </div>
+            <table className="w-full text-[10.5px]">
+              <thead>
+                <tr>
+                  <th className="text-left px-3 py-2 text-[9px] uppercase text-text-ghost tracking-wider border-b border-border-subtle">Agente</th>
+                  {['Precisión', 'Empatía', 'Claridad', 'Adherencia', 'Global', 'Δ Global', 'Ejemplos'].map((h) => (
+                    <th key={h} className="px-3 py-2 text-center text-[9px] uppercase text-text-ghost tracking-wider border-b border-border-subtle">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {agentKeys.map((key, i) => {
+                  const persona = AGENT_PERSONAS[key];
+                  const base = AGENT_BASELINE[key];
+                  const agentStat = stats?.byAgent.find((a) => a.agentKey === key);
+                  const trained = agentStat?.avgScores ?? liveByAgent[key]?.scores ?? null;
+                  const bGlobal = Math.round((base.precision + base.empathy + base.claridad + base.adherencia) / 4);
+                  const tGlobal = trained ? Math.round((trained.precision + trained.empathy + trained.claridad + trained.adherencia) / 4) : null;
+                  const delta = tGlobal !== null ? tGlobal - bGlobal : null;
+                  const count = agentStat?.count ?? 0;
+                  return (
+                    <tr key={key} className={i % 2 === 0 ? 'bg-white/[0.01]' : ''}>
+                      <td className="px-3 py-2.5 border-b border-border-subtle/40">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: persona.color }} />
+                          <span className="font-semibold text-text-secondary">{persona.name.split(' ')[0]}</span>
+                        </div>
+                      </td>
+                      {(['precision', 'empathy', 'claridad', 'adherencia'] as const).map((dim) => (
+                        <td key={dim} className="px-3 py-2.5 text-center border-b border-border-subtle/40">
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="text-text-ghost">{base[dim]}</span>
+                            <span className="text-text-ghost text-[8px]">→</span>
+                            <span className="font-bold" style={{ color: trained && trained[dim] > base[dim] ? C.green : trained && trained[dim] < base[dim] ? C.rose : '#94a3b8' }}>
+                              {trained ? trained[dim] : '—'}
+                            </span>
+                          </div>
+                        </td>
+                      ))}
+                      <td className="px-3 py-2.5 text-center border-b border-border-subtle/40">
+                        <span className="text-[11px] font-black text-text-ghost">{bGlobal}</span>
+                        {tGlobal !== null && <> → <span className="text-[11px] font-black" style={{ color: persona.color }}>{tGlobal}</span></>}
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-b border-border-subtle/40">
+                        {delta !== null ? (
+                          <span className="font-black text-[11px]" style={{ color: delta > 0 ? C.green : delta < 0 ? C.rose : '#94a3b8' }}>
+                            {delta > 0 ? '+' : ''}{delta}
+                          </span>
+                        ) : <span className="text-text-ghost">—</span>}
+                      </td>
+                      <td className="px-3 py-2.5 text-center border-b border-border-subtle/40">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-bold"
+                          style={{ background: count > 0 ? `${C.green}15` : `${C.amber}10`, color: count > 0 ? C.green : C.amber }}>
+                          {count} ej.
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div className="mt-3 text-[9px] text-text-ghost px-3">
+              * Baseline: score sin ejemplos aprobados. Entrenado: promedio de scores en ejemplos guardados en BD + respuestas en vivo del batch.
+              La línea blanca en las barras indica el baseline. Datos en tiempo real desde Supabase.
+            </div>
+          </Card>
+        </>
+      )}
+
+      {/* TAB: Historial */}
+      {tab === 'history' && (
+        <Card className="mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] font-semibold text-text-muted">Ejemplos aprobados — últimos 5 por agente</div>
+            {stats && <Tag label={`${stats.total} total en BD`} color={C.green} />}
+          </div>
+          {loading ? (
+            <div className="text-center py-8 text-text-ghost text-[11px]">Cargando historial...</div>
+          ) : !stats || stats.total === 0 ? (
+            <div className="text-center py-10">
+              <div className="text-3xl mb-2">📭</div>
+              <div className="text-[11px] text-text-ghost mb-1">No hay ejemplos aprobados aún</div>
+              <div className="text-[10px] text-text-ghost">
+                Ve a "Escenarios de entrenamiento", ejecuta un escenario y presiona<br/>
+                <strong className="text-text-muted">"✅ Aprobar — usar para entrenar"</strong> en la respuesta real de la IA.
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {stats.byAgent.filter((a) => a.count > 0).map((agentStat) => {
+                const persona = AGENT_PERSONAS[agentStat.agentKey];
+                return (
+                  <div key={agentStat.agentKey}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <img src={persona.avatar} alt={persona.name} className="w-6 h-6 rounded-md" />
+                      <span className="text-[10px] font-bold" style={{ color: persona.color }}>{persona.name}</span>
+                      <span className="text-[9px] text-text-ghost">— {agentStat.count} ejemplo{agentStat.count !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="space-y-1.5 ml-8">
+                      {agentStat.recent.map((ex) => {
+                        const s = ex.scores as Record<string, number> | null;
+                        const global = s ? Math.round((s.precision + s.empathy + s.claridad + s.adherencia) / 4) : null;
+                        return (
+                          <div key={ex.id} className="flex items-start gap-3 p-2 rounded-lg bg-bg-elevated border border-border-subtle/50">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[10px] text-text-secondary truncate">"{ex.userMessage}"</div>
+                              <div className="text-[8.5px] text-text-ghost mt-0.5">
+                                {new Date(ex.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                {ex.scenarioId && <> · Escenario: <span className="font-mono">{ex.scenarioId}</span></>}
+                              </div>
+                            </div>
+                            {global !== null && (
+                              <div className="text-[14px] font-black flex-shrink-0"
+                                style={{ color: global >= 90 ? C.green : global >= 75 ? C.amber : C.rose }}>
+                                {global}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {/* TAB: Cómo funciona */}
+      {tab === 'howit' && (
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {/* Diagrama de flujo */}
+          <Card>
+            <div className="text-[11px] font-semibold text-text-muted mb-4">Flujo de entrenamiento — Option C (Few-Shot)</div>
+            {[
+              { step: '1', icon: '▶', title: 'Ejecutar escenario', desc: 'El supervisor ejecuta un escenario real contra el agente IA. 1 llamada a Gemini.', color: C.indigo },
+              { step: '2', icon: '✅', title: 'Aprobar respuesta', desc: 'Si la respuesta es buena, se presiona "Aprobar". La respuesta se guarda en Supabase. 0 llamadas adicionales.', color: C.green },
+              { step: '3', icon: '🔍', title: 'Recuperar en inferencia', desc: 'Cuando llega un mensaje, se buscan los 3 ejemplos más similares por similitud Jaccard. 0 llamadas API.', color: C.teal },
+              { step: '4', icon: '💬', title: 'Inyectar en prompt', desc: 'Los ejemplos se inyectan como bloque [EJEMPLOS APROBADOS] antes de las instrucciones del agente. 1 llamada Gemini.', color: C.amber },
+            ].map((s, i, arr) => (
+              <div key={s.step} className="flex items-start gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black text-white flex-shrink-0"
+                    style={{ background: s.color }}>
+                    {s.icon}
+                  </div>
+                  {i < arr.length - 1 && <div className="w-0.5 flex-1 my-1 min-h-[16px]" style={{ background: s.color + '40' }} />}
+                </div>
+                <div className="pb-3 flex-1">
+                  <div className="text-[10.5px] font-bold text-text-secondary">{s.title}</div>
+                  <div className="text-[9.5px] text-text-ghost leading-relaxed mt-0.5">{s.desc}</div>
+                </div>
+              </div>
+            ))}
+          </Card>
+
+          {/* Tabla de costos */}
+          <div className="space-y-3">
+            <Card>
+              <div className="text-[11px] font-semibold text-text-muted mb-3">Consumo de requests por sesión</div>
+              <table className="w-full text-[10px]">
+                <thead>
+                  <tr>
+                    <th className="text-left py-1.5 text-text-ghost text-[8.5px] uppercase border-b border-border-subtle">Acción</th>
+                    <th className="text-center py-1.5 text-text-ghost text-[8.5px] uppercase border-b border-border-subtle">Llamadas Gemini</th>
+                    <th className="text-center py-1.5 text-text-ghost text-[8.5px] uppercase border-b border-border-subtle">Tokens extra</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Ejecutar escenario', '1', '0'],
+                    ['Aprobar ejemplo', '0 ← GRATIS', '0'],
+                    ['Chat sin ejemplos', '1', '0'],
+                    ['Chat con 3 ejemplos', '1', '~900'],
+                    ['Recuperación DB', '0', '0'],
+                  ].map(([action, calls, tokens], i) => (
+                    <tr key={i} className={i % 2 === 0 ? 'bg-white/[0.01]' : ''}>
+                      <td className="py-2 text-text-ghost border-b border-border-subtle/30">{action}</td>
+                      <td className="py-2 text-center font-bold border-b border-border-subtle/30"
+                        style={{ color: calls.includes('0') && !calls.includes('1') ? C.green : C.amber }}>
+                        {calls}
+                      </td>
+                      <td className="py-2 text-center text-text-ghost border-b border-border-subtle/30">{tokens}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+
+            <Card>
+              <div className="text-[11px] font-semibold text-text-muted mb-3">Ventajas del enfoque Few-Shot</div>
+              <ul className="space-y-2">
+                {[
+                  { icon: '🚀', text: 'Sin cambio de proveedor ni fine-tuning costoso' },
+                  { icon: '💰', text: '0 API calls extra por entrenamiento' },
+                  { icon: '📈', text: 'Mejora visible desde el primer ejemplo aprobado' },
+                  { icon: '🔍', text: 'Similitud Jaccard: búsqueda semántica sin embeddings' },
+                  { icon: '🛡️', text: 'Solo respuestas aprobadas por humano llegan al prompt' },
+                  { icon: '↩️', text: 'Reversible: eliminar ejemplos = volver al baseline' },
+                ].map((item) => (
+                  <li key={item.text} className="flex items-start gap-2 text-[9.5px] text-text-ghost">
+                    <span>{item.icon}</span> {item.text}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            <Card style={{ border: `1px solid ${C.green}30`, background: `${C.green}05` }}>
+              <div className="text-[10px] font-bold mb-2" style={{ color: C.green }}>Arquitectura técnica</div>
+              <div className="font-mono text-[8.5px] text-text-ghost space-y-0.5">
+                <div><span style={{ color: C.indigo }}>DB:</span> training_examples (Supabase/PostgreSQL)</div>
+                <div><span style={{ color: C.indigo }}>Búsqueda:</span> Jaccard word overlap, top-3</div>
+                <div><span style={{ color: C.indigo }}>Threshold:</span> similitud {'>'} 0.05</div>
+                <div><span style={{ color: C.indigo }}>Pool:</span> últimos 50 por agente</div>
+                <div><span style={{ color: C.indigo }}>Inyección:</span> fewShotBlock → prompt de Gemini</div>
+                <div><span style={{ color: C.indigo }}>Agentes:</span> TRIAJE · ANALISTA · COMERCIAL · SOPORTE</div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 /* ─── PAGE ───────────────────────────────────────────────────────── */
 export default function CulturaOrganizacional() {
   const [liveResults, setLiveResults] = useState<Record<string, TrainingRunResult>>({});
@@ -987,6 +1448,14 @@ export default function CulturaOrganizacional() {
         Resultados del entrenamiento
       </SectionTitle>
       <ResultadosEntrenamiento liveResults={liveResults} onBatchComplete={handleBatchComplete} />
+
+      <SectionTitle
+        icon="🧠"
+        sub="Evidencia de entrenamiento en tiempo real — ejemplos aprobados en BD, evolución de scores por agente y mecanismo técnico para el jurado"
+      >
+        Panel de entrenamiento IA — Evidencia para jurado
+      </SectionTitle>
+      <PanelEntrenamientoIA liveResults={liveResults} />
 
       <ListaParaPrueba />
 
