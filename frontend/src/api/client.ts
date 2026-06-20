@@ -158,6 +158,24 @@ export async function runTrainingBatch(
   return data;
 }
 
+// ── Token stats ───────────────────────────────────────────────────────────────
+
+export interface AgentTokenStats {
+  agent: string; calls: number;
+  totalInput: number; totalOutput: number; totalTokens: number;
+  avgInput: number; avgOutput: number;
+  inputCostUsd: number; outputCostUsd: number; totalCostUsd: number;
+}
+export interface TokenStats {
+  byAgent: AgentTokenStats[];
+  totals: { calls: number; totalInput: number; totalOutput: number; totalTokens: number; totalCostUsd: number };
+  pricing: { inputPerMillon: number; outputPerMillon: number };
+}
+export async function fetchTokenStats(): Promise<TokenStats> {
+  const { data } = await api.get('/metrics/token-stats');
+  return data;
+}
+
 // ── Exchange rate ─────────────────────────────────────────────────────────────
 
 export async function fetchExchangeRate(): Promise<{ rate: number; ts: string }> {

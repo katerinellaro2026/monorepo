@@ -147,6 +147,8 @@ export async function analystAgent(
 
   // ── Generar respuesta ────────────────────────────────────────────────────
   let response: string;
+  let inputTokens = 0;
+  let outputTokens = 0;
 
   if (geminiEnabled) {
     try {
@@ -215,6 +217,8 @@ Instrucciones:
 7. Máximo 150 palabras. Responde en español peruano, tono profesional pero cercano.`;
 
       const result = await model.generateContent(prompt);
+      inputTokens = result.response.usageMetadata?.promptTokenCount ?? 0;
+      outputTokens = result.response.usageMetadata?.candidatesTokenCount ?? 0;
       response = result.response.text();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -233,7 +237,7 @@ Instrucciones:
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'ANALISTA', latencyMs, precision: 0.93, volume: 1 },
+    data: { agent: 'ANALISTA', latencyMs, precision: 0.93, volume: 1, extraData: { inputTokens, outputTokens } },
   }).catch(() => {});
 
   return {

@@ -91,6 +91,8 @@ interface GeminiExtraction {
   name: string | null;
   district: string | null;
   response: string;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 async function geminiCommercial(
@@ -138,9 +140,12 @@ Devuelve SOLO JSON válido:
 }`;
 
   const result = await flash.generateContent(prompt);
+  const meta = result.response.usageMetadata;
   const text = result.response.text();
   const parsed = JSON.parse(text) as GeminiExtraction;
-  if (!parsed.currency) parsed.currency = 'SOL'; // fallback seguro
+  if (!parsed.currency) parsed.currency = 'SOL';
+  parsed.inputTokens = meta?.promptTokenCount ?? 0;
+  parsed.outputTokens = meta?.candidatesTokenCount ?? 0;
   return parsed;
 }
 
@@ -159,15 +164,19 @@ export async function commercialAgent(
   let name: string | null = null;
   let district: string | null = null;
   let responseText: string;
+  let inputTokens = 0;
+  let outputTokens = 0;
 
   if (geminiEnabled) {
     try {
       const extracted = await geminiCommercial(message, history);
-      phone    = extracted.phone;
-      budget   = extracted.budget;
-      currency = extracted.currency ?? 'SOL';
-      name     = extracted.name;
-      district = extracted.district;
+      phone        = extracted.phone;
+      budget       = extracted.budget;
+      currency     = extracted.currency ?? 'SOL';
+      name         = extracted.name;
+      district     = extracted.district;
+      inputTokens  = extracted.inputTokens;
+      outputTokens = extracted.outputTokens;
     } catch (err: unknown) {
       console.error('[CommercialAgent] Gemini error:', err instanceof Error ? err.message : String(err));
     }
@@ -264,7 +273,7 @@ export async function commercialAgent(
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'COMERCIAL', latencyMs, precision: leadCreated ? 1 : 0.35, volume: 1 },
+    data: { agent: 'COMERCIAL', latencyMs, precision: leadCreated ? 1 : 0.35, volume: 1, extraData: { inputTokens, outputTokens } },
   }).catch(() => {});
 
   return { response: responseText, extractedPhone: phone, extractedBudget: budget, leadCreated, userId, latencyMs };

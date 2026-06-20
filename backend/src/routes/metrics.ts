@@ -132,6 +132,63 @@ const metricsRoutes: FastifyPluginAsync = async (app) => {
       funnel: funnelData,
     };
   });
+
+  // Token usage & cost stats por agente
+  app.get('/token-stats', { preHandler: requireAdmin }, async () => {
+    const { prisma } = await import('../index');
+
+    // Lee extraData JSONB de agent_logs
+    type RawRow = { agent: string; calls: bigint; total_input: bigint | null; total_output: bigint | null; avg_input: number | null; avg_output: number | null };
+    const rows: RawRow[] = await prisma.$queryRaw`
+      SELECT
+        agent,
+        COUNT(*)::bigint                                         AS calls,
+        SUM(("extraData"->>'inputTokens')::integer)::bigint      AS total_input,
+        SUM(("extraData"->>'outputTokens')::integer)::bigint     AS total_output,
+        AVG(("extraData"->>'inputTokens')::integer)              AS avg_input,
+        AVG(("extraData"->>'outputTokens')::integer)             AS avg_output
+      FROM agent_logs
+      WHERE "extraData" IS NOT NULL
+        AND "extraData"->>'inputTokens' IS NOT NULL
+      GROUP BY agent
+    `;
+
+    const INPUT_PRICE_PER_M  = 0.10;  // USD por 1M tokens input
+    const OUTPUT_PRICE_PER_M = 0.40;  // USD por 1M tokens output
+
+    const byAgent = rows.map((r) => {
+      const totalInput  = Number(r.total_input  ?? 0);
+      const totalOutput = Number(r.total_output ?? 0);
+      const inputCost   = (totalInput  / 1_000_000) * INPUT_PRICE_PER_M;
+      const outputCost  = (totalOutput / 1_000_000) * OUTPUT_PRICE_PER_M;
+      return {
+        agent:         r.agent,
+        calls:         Number(r.calls),
+        totalInput,
+        totalOutput,
+        totalTokens:   totalInput + totalOutput,
+        avgInput:      Math.round(r.avg_input  ?? 0),
+        avgOutput:     Math.round(r.avg_output ?? 0),
+        inputCostUsd:  +inputCost.toFixed(6),
+        outputCostUsd: +outputCost.toFixed(6),
+        totalCostUsd:  +(inputCost + outputCost).toFixed(6),
+      };
+    });
+
+    const totals = byAgent.reduce(
+      (acc, r) => ({
+        calls:        acc.calls        + r.calls,
+        totalInput:   acc.totalInput   + r.totalInput,
+        totalOutput:  acc.totalOutput  + r.totalOutput,
+        totalTokens:  acc.totalTokens  + r.totalTokens,
+        totalCostUsd: acc.totalCostUsd + r.totalCostUsd,
+      }),
+      { calls: 0, totalInput: 0, totalOutput: 0, totalTokens: 0, totalCostUsd: 0 }
+    );
+    totals.totalCostUsd = +totals.totalCostUsd.toFixed(6);
+
+    return { byAgent, totals, pricing: { inputPerMillon: INPUT_PRICE_PER_M, outputPerMillon: OUTPUT_PRICE_PER_M } };
+  });
 };
 
 export default metricsRoutes;

@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import { AGENT_PERSONAS } from '@/data/agentPersonas';
 import {
-  runTrainingScenario, approveTrainingExample, fetchTrainingStats,
-  type TrainingRunResult, type TrainingStats, type TrainingAgentStats,
+  runTrainingScenario, approveTrainingExample, fetchTrainingStats, fetchTokenStats,
+  type TrainingRunResult, type TrainingStats, type TrainingAgentStats, type TokenStats,
 } from '@/api/client';
 
 /* ─── Tokens ─────────────────────────────────────────────────────── */
@@ -1053,14 +1053,16 @@ function AgentTrainingCard({ stat, liveResult }: { stat: TrainingAgentStats; liv
 
 function PanelEntrenamientoIA({ liveResults }: { liveResults: Record<string, TrainingRunResult> }) {
   const [stats, setStats] = useState<TrainingStats | null>(null);
+  const [tokenStats, setTokenStats] = useState<TokenStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'overview' | 'history' | 'howit'>('overview');
+  const [tab, setTab] = useState<'overview' | 'history' | 'costs' | 'howit'>('overview');
 
   useEffect(() => {
-    fetchTrainingStats()
-      .then(setStats)
-      .catch(() => setStats(null))
-      .finally(() => setLoading(false));
+    Promise.allSettled([fetchTrainingStats(), fetchTokenStats()]).then(([ts, tok]) => {
+      if (ts.status === 'fulfilled') setStats(ts.value);
+      if (tok.status === 'fulfilled') setTokenStats(tok.value);
+      setLoading(false);
+    });
   }, []);
 
   const agentKeys = ['TRIAJE', 'ANALISTA', 'COMERCIAL', 'SOPORTE_B2B'];
@@ -1116,6 +1118,7 @@ function PanelEntrenamientoIA({ liveResults }: { liveResults: Record<string, Tra
         {([
           ['overview',  '📊 Evolución por agente'],
           ['history',   '📋 Historial de ejemplos'],
+          ['costs',     '💰 Tokens y costos'],
           ['howit',     '⚙️ Cómo funciona'],
         ] as const).map(([t, label]) => (
           <button
@@ -1284,6 +1287,169 @@ function PanelEntrenamientoIA({ liveResults }: { liveResults: Record<string, Tra
             </div>
           )}
         </Card>
+      )}
+
+      {/* TAB: Tokens y costos */}
+      {tab === 'costs' && (
+        <>
+          {/* KPIs globales */}
+          <div className="grid grid-cols-4 gap-3 mb-4">
+            {[
+              { label: 'Total llamadas IA', value: tokenStats?.totals.calls ?? '—', color: C.indigo, icon: '🔁' },
+              { label: 'Tokens de entrada', value: tokenStats ? (tokenStats.totals.totalInput / 1000).toFixed(1) + 'K' : '—', color: C.teal, icon: '📥' },
+              { label: 'Tokens de salida', value: tokenStats ? (tokenStats.totals.totalOutput / 1000).toFixed(1) + 'K' : '—', color: C.violet, icon: '📤' },
+              { label: 'Costo acumulado (USD)', value: tokenStats ? `$${tokenStats.totals.totalCostUsd.toFixed(4)}` : '—', color: C.amber, icon: '💵' },
+            ].map((k) => (
+              <div key={k.label} className="bg-bg-card rounded-card border border-border-subtle p-3 flex items-center gap-3">
+                <div className="text-2xl">{k.icon}</div>
+                <div>
+                  <div className="text-[20px] font-black leading-none" style={{ color: k.color }}>{k.value}</div>
+                  <div className="text-[9px] text-text-ghost leading-tight mt-0.5">{k.label}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tabla por agente */}
+          <Card className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[11px] font-semibold text-text-muted">Desglose de tokens y costo por agente</div>
+              <div className="text-[9px] text-text-ghost">
+                Precios: entrada $0.10/M · salida $0.40/M tokens · Gemini Flash
+              </div>
+            </div>
+
+            {!tokenStats || tokenStats.byAgent.length === 0 ? (
+              <div className="text-center py-10">
+                <div className="text-3xl mb-2">📭</div>
+                <div className="text-[11px] text-text-ghost">Sin datos de tokens aún</div>
+                <div className="text-[10px] text-text-ghost mt-1">
+                  Usa el chat o ejecuta escenarios de entrenamiento para generar registros.
+                </div>
+              </div>
+            ) : (
+              <table className="w-full text-[10.5px]">
+                <thead>
+                  <tr>
+                    {['Agente', 'Llamadas', 'Tokens entrada', 'Tokens salida', 'Total tokens', 'Costo entrada', 'Costo salida', 'Costo total', 'Avg entrada/call', 'Avg salida/call'].map((h) => (
+                      <th key={h} className="px-2.5 py-2 text-[8.5px] font-semibold uppercase tracking-wider text-text-ghost border-b border-border-subtle text-center first:text-left">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {tokenStats.byAgent.map((r, i) => {
+                    const persona = AGENT_PERSONAS[r.agent] ?? { name: r.agent, color: C.slate };
+                    return (
+                      <tr key={r.agent} className={i % 2 === 0 ? 'bg-white/[0.01]' : ''}>
+                        <td className="px-2.5 py-2.5 border-b border-border-subtle/40">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: persona.color }} />
+                            <span className="font-bold text-text-secondary">{persona.name?.split(' ')[0] ?? r.agent}</span>
+                          </div>
+                        </td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono">{r.calls}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono" style={{ color: C.teal }}>{r.totalInput.toLocaleString('es-PE')}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono" style={{ color: C.violet }}>{r.totalOutput.toLocaleString('es-PE')}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono font-bold text-text-secondary">{r.totalTokens.toLocaleString('es-PE')}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono text-text-ghost">${r.inputCostUsd.toFixed(5)}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono text-text-ghost">${r.outputCostUsd.toFixed(5)}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40">
+                          <span className="font-black" style={{ color: C.amber }}>${r.totalCostUsd.toFixed(5)}</span>
+                        </td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono text-text-ghost">{r.avgInput.toLocaleString('es-PE')}</td>
+                        <td className="px-2.5 py-2.5 text-center border-b border-border-subtle/40 font-mono text-text-ghost">{r.avgOutput.toLocaleString('es-PE')}</td>
+                      </tr>
+                    );
+                  })}
+                  {/* Fila totales */}
+                  <tr className="font-bold" style={{ background: `${C.indigo}08` }}>
+                    <td className="px-2.5 py-2.5 text-text-secondary">TOTAL</td>
+                    <td className="px-2.5 py-2.5 text-center font-mono">{tokenStats.totals.calls}</td>
+                    <td className="px-2.5 py-2.5 text-center font-mono" style={{ color: C.teal }}>{tokenStats.totals.totalInput.toLocaleString('es-PE')}</td>
+                    <td className="px-2.5 py-2.5 text-center font-mono" style={{ color: C.violet }}>{tokenStats.totals.totalOutput.toLocaleString('es-PE')}</td>
+                    <td className="px-2.5 py-2.5 text-center font-mono text-text-secondary">{tokenStats.totals.totalTokens.toLocaleString('es-PE')}</td>
+                    <td className="px-2.5 py-2.5 text-center" colSpan={2} />
+                    <td className="px-2.5 py-2.5 text-center">
+                      <span className="text-[13px] font-black" style={{ color: C.amber }}>${tokenStats.totals.totalCostUsd.toFixed(4)}</span>
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tbody>
+              </table>
+            )}
+          </Card>
+
+          {/* Proyección y referencia de precios */}
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <Card>
+              <div className="text-[11px] font-semibold text-text-muted mb-3">Referencia de precios — Gemini</div>
+              <table className="w-full text-[10px]">
+                <thead>
+                  <tr>
+                    <th className="text-left py-1.5 text-[8.5px] uppercase text-text-ghost border-b border-border-subtle">Nivel</th>
+                    <th className="text-center py-1.5 text-[8.5px] uppercase text-text-ghost border-b border-border-subtle">Entrada</th>
+                    <th className="text-center py-1.5 text-[8.5px] uppercase text-text-ghost border-b border-border-subtle">Salida</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['Nivel gratuito', 'Sin costo', 'Sin costo'],
+                    ['Nivel de pago', '$0.10 / 1M tokens', '$0.40 / 1M tokens'],
+                  ].map(([tier, inp, out], i) => (
+                    <tr key={i} className={i % 2 === 0 ? 'bg-white/[0.01]' : ''}>
+                      <td className="py-2 text-text-secondary font-medium border-b border-border-subtle/30">{tier}</td>
+                      <td className="py-2 text-center border-b border-border-subtle/30" style={{ color: C.teal }}>{inp}</td>
+                      <td className="py-2 text-center border-b border-border-subtle/30" style={{ color: C.violet }}>{out}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-3 text-[8.5px] text-text-ghost">
+                * Audio: $0.30/M entrada. Imagen/video mismo precio que texto.
+              </div>
+            </Card>
+
+            <Card>
+              <div className="text-[11px] font-semibold text-text-muted mb-3">Proyección mensual estimada</div>
+              {tokenStats && tokenStats.totals.calls > 0 ? (() => {
+                const avgTokensPerCall = tokenStats.totals.totalTokens / tokenStats.totals.calls;
+                const avgCostPerCall   = tokenStats.totals.totalCostUsd / tokenStats.totals.calls;
+                const scenarios = [
+                  { label: '50 chats/mes', calls: 50 },
+                  { label: '200 chats/mes', calls: 200 },
+                  { label: '1,000 chats/mes', calls: 1000 },
+                  { label: '5,000 chats/mes', calls: 5000 },
+                ];
+                return (
+                  <div className="space-y-2">
+                    <div className="text-[9px] text-text-ghost mb-2">
+                      Basado en promedio real: <span className="font-bold text-text-muted">{Math.round(avgTokensPerCall).toLocaleString()} tokens/llamada</span>
+                    </div>
+                    {scenarios.map((s) => {
+                      const cost = s.calls * avgCostPerCall;
+                      const color = cost < 0.01 ? C.green : cost < 0.10 ? C.teal : cost < 1 ? C.amber : C.rose;
+                      return (
+                        <div key={s.label} className="flex items-center justify-between p-2 rounded-lg" style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
+                          <span className="text-[10px] text-text-ghost">{s.label}</span>
+                          <span className="text-[11px] font-black" style={{ color }}>
+                            ${cost < 0.0001 ? cost.toFixed(6) : cost.toFixed(4)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                    <div className="text-[8.5px] text-text-ghost mt-2 pt-2 border-t border-border-subtle">
+                      * Estimación. Incluye triaje + agente especializado (2 llamadas promedio por mensaje).
+                    </div>
+                  </div>
+                );
+              })() : (
+                <div className="text-[10px] text-text-ghost text-center py-6">
+                  Sin datos suficientes para proyectar.<br/>Genera interacciones primero.
+                </div>
+              )}
+            </Card>
+          </div>
+        </>
       )}
 
       {/* TAB: Cómo funciona */}

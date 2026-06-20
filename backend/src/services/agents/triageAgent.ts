@@ -32,7 +32,7 @@ function keywordTriage(message: string, history: Array<{ role: string; content: 
 }
 
 // ── Gemini triage ─────────────────────────────────────────────────────────────
-async function geminiTriage(message: string, history: Array<{ role: string; content: string }>): Promise<{ intent: Intent; confidence: number }> {
+async function geminiTriage(message: string, history: Array<{ role: string; content: string }>): Promise<{ intent: Intent; confidence: number; inputTokens: number; outputTokens: number }> {
   const flash = getFlashModel(true);
   const historySnippet = history.slice(-4).map((h) => `${h.role}: ${h.content}`).join('\n');
 
@@ -53,9 +53,15 @@ Mensaje actual: "${message}"
 Ejemplo de respuesta: {"intent": "VALUATION", "confidence": 0.92}`;
 
   const result = await flash.generateContent(prompt);
+  const meta = result.response.usageMetadata;
   const text = result.response.text();
   const parsed = JSON.parse(text) as { intent: Intent; confidence: number };
-  return { intent: parsed.intent ?? 'GENERAL', confidence: parsed.confidence ?? 0.7 };
+  return {
+    intent: parsed.intent ?? 'GENERAL',
+    confidence: parsed.confidence ?? 0.7,
+    inputTokens: meta?.promptTokenCount ?? 0,
+    outputTokens: meta?.candidatesTokenCount ?? 0,
+  };
 }
 
 // ── Public function ───────────────────────────────────────────────────────────
@@ -64,10 +70,12 @@ export async function triageAgent(message: string, history: Array<{ role: string
 
   let intent: Intent;
   let confidence: number;
+  let inputTokens = 0;
+  let outputTokens = 0;
 
   try {
     if (geminiEnabled) {
-      ({ intent, confidence } = await geminiTriage(message, history));
+      ({ intent, confidence, inputTokens, outputTokens } = await geminiTriage(message, history));
     } else {
       ({ intent, confidence } = keywordTriage(message, history));
     }
@@ -78,7 +86,7 @@ export async function triageAgent(message: string, history: Array<{ role: string
 
   const latencyMs = Date.now() - start;
   await prisma.agentLog.create({
-    data: { agent: 'TRIAJE', latencyMs, precision: confidence, volume: 1 },
+    data: { agent: 'TRIAJE', latencyMs, precision: confidence, volume: 1, extraData: { inputTokens, outputTokens } },
   }).catch(() => {});
 
   return { intent, confidence, latencyMs };
