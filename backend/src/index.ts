@@ -44,6 +44,12 @@ async function main() {
     return { token, role: user.role, name: user.name };
   });
 
+  // Auto-login sin contraseña — acceso directo para demo/jurado
+  app.post('/auth/auto', async () => {
+    const token = app.jwt.sign({ sub: 'demo-admin', role: 'ADMIN' }, { expiresIn: '30d' });
+    return { token, role: 'ADMIN', name: 'Admin' };
+  });
+
   await app.register(propertiesRoutes,    { prefix: '/api/properties' });
   await app.register(usersRoutes,         { prefix: '/api/users' });
   await app.register(leadsRoutes,         { prefix: '/api/leads' });

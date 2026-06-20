@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import Login from '@/pages/Login';
 import PublicChat from '@/pages/PublicChat';
@@ -42,7 +43,26 @@ function AppLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+const BACKEND = import.meta.env.VITE_API_URL ?? '';
+
 export default function App() {
+  const [ready, setReady] = useState(!!localStorage.getItem('inmodata_token'));
+
+  useEffect(() => {
+    if (localStorage.getItem('inmodata_token')) return;
+    fetch(`${BACKEND}/auth/auto`, { method: 'POST' })
+      .then((r) => r.json())
+      .then((data) => {
+        localStorage.setItem('inmodata_token', data.token);
+        localStorage.setItem('inmodata_role', data.role);
+        localStorage.setItem('inmodata_name', data.name ?? 'Admin');
+        setReady(true);
+      })
+      .catch(() => setReady(true)); // si falla, igual muestra la app
+  }, []);
+
+  if (!ready) return null;
+
   return (
     <BrowserRouter>
       <Routes>
