@@ -264,6 +264,17 @@ const TRAINING_SCENARIOS = [
         scores: { precision: 97, empatia: 88, claridad: 96, adherencia: 97 },
         aprobado: true,
       },
+      {
+        id: 'T4', titulo: 'Input personalizado',
+        valorCultural: 'Adaptabilidad',
+        situacion: 'Escribe cualquier mensaje para probar al agente Sofía en tiempo real.',
+        input: '',
+        isCustom: true,
+        culturaEsperada: 'La respuesta debe respetar los valores del agente: empatía, precisión y lenguaje peruano natural.',
+        respuestaAgente: '',
+        scores: { precision: 0, empatia: 0, claridad: 0, adherencia: 0 },
+        aprobado: false,
+      },
     ],
   },
   {
@@ -298,6 +309,17 @@ const TRAINING_SCENARIOS = [
         respuestaAgente: 'Soy **Carlos**. Para alquiler en Jesús María, según los datos disponibles: 📋\n\n• **Precio venta referencia (BCRP):** USD 2,086/m² → 80m² = **USD 166,880**\n• **PER típico Lima (zona media):** 18–22 años\n• **Alquiler estimado:** USD 630–780/mes (S/ 2,375–2,940/mes)\n\nMi recomendación: arranca en **S/ 2,700/mes** y negocia. Estás en un distrito con alta demanda y oferta limitada.',
         scores: { precision: 93, empatia: 86, claridad: 95, adherencia: 91 },
         aprobado: true,
+      },
+      {
+        id: 'A4', titulo: 'Input personalizado',
+        valorCultural: 'Adaptabilidad',
+        situacion: 'Escribe cualquier consulta de tasación o precios para probar al agente Carlos.',
+        input: '',
+        isCustom: true,
+        culturaEsperada: 'Respuesta analítica con datos del mercado, sin inflar expectativas, con precio/m² y referencias BCRP.',
+        respuestaAgente: '',
+        scores: { precision: 0, empatia: 0, claridad: 0, adherencia: 0 },
+        aprobado: false,
       },
     ],
   },
@@ -334,6 +356,17 @@ const TRAINING_SCENARIOS = [
         scores: { precision: 97, empatia: 91, claridad: 99, adherencia: 96 },
         aprobado: true,
       },
+      {
+        id: 'C4', titulo: 'Input personalizado',
+        valorCultural: 'Adaptabilidad',
+        situacion: 'Escribe cualquier mensaje para probar al agente Diego en tiempo real.',
+        input: '',
+        isCustom: true,
+        culturaEsperada: 'Calificar al lead con empatía, recopilar presupuesto/zona/contacto sin presión.',
+        respuestaAgente: '',
+        scores: { precision: 0, empatia: 0, claridad: 0, adherencia: 0 },
+        aprobado: false,
+      },
     ],
   },
   {
@@ -369,6 +402,17 @@ const TRAINING_SCENARIOS = [
         scores: { precision: 92, empatia: 88, claridad: 97, adherencia: 96 },
         aprobado: true,
       },
+      {
+        id: 'B4', titulo: 'Input personalizado',
+        valorCultural: 'Adaptabilidad',
+        situacion: 'Escribe cualquier consulta B2B para probar al agente Valeria en tiempo real.',
+        input: '',
+        isCustom: true,
+        culturaEsperada: 'Respuesta profesional y empática, orientada a soluciones, honesta sobre limitaciones del servicio.',
+        respuestaAgente: '',
+        scores: { precision: 0, empatia: 0, claridad: 0, adherencia: 0 },
+        aprobado: false,
+      },
     ],
   },
 ];
@@ -389,17 +433,21 @@ function TrainingSection({
   const [error, setError] = useState<string | null>(null);
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [approving, setApproving] = useState<string | null>(null);
+  const [customInputs, setCustomInputs] = useState<Record<string, string>>({});
 
   const agentData = TRAINING_SCENARIOS.find((a) => a.agentKey === activeAgent)!;
   const scenario = agentData.escenarios[activeScenario];
   const persona = AGENT_PERSONAS[activeAgent];
   const live = liveResults[scenario.id];
 
+  const isCustom = !!(scenario as { isCustom?: boolean }).isCustom;
+  const effectiveInput = isCustom ? (customInputs[activeAgent] ?? '') : scenario.input;
+
   const handleRun = useCallback(async () => {
     setRunning(scenario.id);
     setError(null);
     try {
-      const result = await runTrainingScenario(scenario.id, activeAgent, scenario.input);
+      const result = await runTrainingScenario(scenario.id, activeAgent, effectiveInput);
       onResult(scenario.id, result);
       setTab('live');
     } catch {
@@ -407,7 +455,7 @@ function TrainingSection({
     } finally {
       setRunning(null);
     }
-  }, [scenario, activeAgent, onResult]);
+  }, [scenario, activeAgent, effectiveInput, onResult]);
 
   const handleApprove = useCallback(async () => {
     if (!live) return;
@@ -416,7 +464,7 @@ function TrainingSection({
       await approveTrainingExample({
         agentKey: activeAgent,
         scenarioId: scenario.id,
-        userMessage: scenario.input,
+        userMessage: effectiveInput,
         idealOutput: live.response,
         scores: live.scores,
       });
@@ -424,7 +472,7 @@ function TrainingSection({
     } finally {
       setApproving(null);
     }
-  }, [live, scenario, activeAgent]);
+  }, [live, scenario, activeAgent, effectiveInput]);
 
   const scoreColor = (v: number) => v >= 90 ? C.green : v >= 75 ? C.amber : C.rose;
 
@@ -435,11 +483,14 @@ function TrainingSection({
         {TRAINING_SCENARIOS.map(({ agentKey, escenarios }) => {
           const p = AGENT_PERSONAS[agentKey];
           const active = activeAgent === agentKey;
+          const fixedEsc = escenarios.filter((e) => !(e as { isCustom?: boolean }).isCustom);
           const executed = escenarios.filter((e) => liveResults[e.id]).length;
           const liveGlobal = executed > 0
             ? Math.round(escenarios.reduce((s, e) => s + (liveResults[e.id]?.global ?? 0), 0) / executed)
             : null;
-          const staticGlobal = Math.round(escenarios.reduce((s, e) => s + ((e.scores.precision + e.scores.empatia + e.scores.claridad + e.scores.adherencia) / 4), 0) / escenarios.length);
+          const staticGlobal = fixedEsc.length > 0
+            ? Math.round(fixedEsc.reduce((s, e) => s + ((e.scores.precision + e.scores.empatia + e.scores.claridad + e.scores.adherencia) / 4), 0) / fixedEsc.length)
+            : 0;
           const displayScore = liveGlobal ?? staticGlobal;
           return (
             <button key={agentKey} onClick={() => { setActiveAgent(agentKey); setActiveScenario(0); setTab('expected'); }}
@@ -492,8 +543,8 @@ function TrainingSection({
           {/* Botón ejecutar */}
           <button
             onClick={handleRun}
-            disabled={running === scenario.id}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold transition-all flex-shrink-0 disabled:opacity-60"
+            disabled={running === scenario.id || (isCustom && !effectiveInput.trim())}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-bold transition-all flex-shrink-0 disabled:opacity-40"
             style={{ background: `${persona.color}20`, color: persona.color, border: `1px solid ${persona.color}40` }}>
             {running === scenario.id
               ? <><span className="animate-spin">⟳</span> Evaluando...</>
@@ -528,7 +579,18 @@ function TrainingSection({
           <div className="space-y-3">
             <div className="bg-bg-elevated rounded-xl p-3">
               <div className="text-[9px] font-bold uppercase tracking-[0.07em] mb-1.5 text-text-ghost">👤 Input de prueba enviado a la IA</div>
-              <p className="text-[12.5px] text-text-secondary font-semibold italic">"{scenario.input}"</p>
+              {isCustom ? (
+                <textarea
+                  value={customInputs[activeAgent] ?? ''}
+                  onChange={(e) => setCustomInputs(prev => ({ ...prev, [activeAgent]: e.target.value }))}
+                  placeholder={`Escribe aquí el mensaje para probar a ${persona.name}...`}
+                  rows={4}
+                  className="w-full text-[11.5px] text-text-secondary bg-transparent resize-none outline-none placeholder:text-text-ghost border rounded-lg p-2 leading-relaxed"
+                  style={{ borderColor: `${persona.color}30` }}
+                />
+              ) : (
+                <p className="text-[12.5px] text-text-secondary font-semibold italic">"{scenario.input}"</p>
+              )}
             </div>
             <div className="rounded-xl p-3" style={{ background: `${C.indigo}08`, border: `0.5px solid ${C.indigo}20` }}>
               <div className="text-[9px] font-bold uppercase tracking-[0.07em] mb-1.5" style={{ color: C.indigo }}>🎯 Comportamiento cultural esperado</div>
@@ -536,7 +598,7 @@ function TrainingSection({
             </div>
 
             {/* Scores comparativos */}
-            {live && (
+            {live && !isCustom && (
               <div className="bg-bg-elevated rounded-xl p-3">
                 <div className="text-[9px] font-bold uppercase tracking-[0.07em] mb-2 text-text-ghost">📊 Comparación de scores</div>
                 {(['precision', 'empatia', 'claridad', 'adherencia'] as const).map((dim) => {
@@ -562,6 +624,15 @@ function TrainingSection({
           {/* Columna derecha — respuesta */}
           <div>
             {tab === 'expected' ? (
+              isCustom ? (
+                <div className="flex flex-col items-center justify-center h-full py-8 text-center gap-3">
+                  <div className="text-3xl opacity-30">✏️</div>
+                  <div className="text-[10.5px] text-text-ghost leading-relaxed max-w-[220px]">
+                    Escenario libre — sin baseline predefinido.<br/>
+                    Escribe tu mensaje y pulsa <strong>Ejecutar en vivo</strong> para ver la respuesta del agente.
+                  </div>
+                </div>
+              ) : (
               <>
                 <div className="text-[9px] font-bold uppercase tracking-[0.07em] mb-2 text-text-ghost">💬 Respuesta de referencia (baseline)</div>
                 <div className="bg-bg-elevated rounded-xl p-3.5 border mb-3" style={{ borderColor: persona.color + '20' }}>
@@ -590,6 +661,7 @@ function TrainingSection({
                   })}
                 </div>
               </>
+              )
             ) : live ? (
               <>
                 <div className="flex items-center justify-between mb-2">
