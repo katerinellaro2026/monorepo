@@ -1,12 +1,26 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Check, LogOut } from 'lucide-react';
 import { getPlansForRole, ROLE_LABEL } from '@/data/plans';
-import { logout } from '@/api/client';
+import { logout, fetchMySubscription } from '@/api/client';
 
 export default function SeleccionarPlan() {
   const navigate = useNavigate();
   const role = localStorage.getItem('inmodata_role') ?? 'BUYER';
   const plans = getPlansForRole(role);
+
+  // Plan actualmente activo (solo si hay una suscripción vigente)
+  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchMySubscription()
+      .then((r) => {
+        if (r.subscription && r.subscription.status === 'ACTIVE') {
+          setCurrentPlan(r.subscription.plan);
+        }
+      })
+      .catch(() => setCurrentPlan(null));
+  }, []);
 
   function handleLogout() {
     logout();
@@ -44,14 +58,20 @@ export default function SeleccionarPlan() {
 
         {/* Planes */}
         <div className="grid md:grid-cols-3 gap-5">
-          {plans.map((plan) => (
+          {plans.map((plan) => {
+            const isCurrent = currentPlan === plan.key;
+            return (
             <div
               key={plan.key}
               className={`relative bg-bg-card rounded-card border p-6 flex flex-col ${
-                plan.highlighted ? 'border-indigo' : 'border-border-subtle'
+                isCurrent ? 'border-emerald' : plan.highlighted ? 'border-indigo' : 'border-border-subtle'
               }`}
             >
-              {plan.highlighted && (
+              {isCurrent ? (
+                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-emerald text-white text-[9px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full">
+                  Plan actual
+                </div>
+              ) : plan.highlighted && (
                 <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-indigo text-white text-[9px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full">
                   Más popular
                 </div>
@@ -76,18 +96,25 @@ export default function SeleccionarPlan() {
                 ))}
               </ul>
 
-              <button
-                onClick={() => navigate(`/checkout?plan=${plan.key}`)}
-                className={`w-full font-semibold text-sm rounded-[10px] py-2.5 transition-all ${
-                  plan.highlighted
-                    ? 'bg-indigo hover:bg-indigo/85 text-white'
-                    : 'bg-bg-surface border border-border-subtle text-text-secondary hover:border-indigo/50'
-                }`}
-              >
-                Elegir {plan.label}
-              </button>
+              {isCurrent ? (
+                <div className="w-full flex items-center justify-center gap-1.5 font-semibold text-sm rounded-[10px] py-2.5 bg-emerald/10 border border-emerald/30 text-emerald cursor-default">
+                  <Check size={15} /> Plan actual
+                </div>
+              ) : (
+                <button
+                  onClick={() => navigate(`/checkout?plan=${plan.key}`)}
+                  className={`w-full font-semibold text-sm rounded-[10px] py-2.5 transition-all ${
+                    plan.highlighted
+                      ? 'bg-indigo hover:bg-indigo/85 text-white'
+                      : 'bg-bg-surface border border-border-subtle text-text-secondary hover:border-indigo/50'
+                  }`}
+                >
+                  {currentPlan ? `Cambiar a ${plan.label}` : `Elegir ${plan.label}`}
+                </button>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
