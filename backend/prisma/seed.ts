@@ -1,4 +1,5 @@
 import { PrismaClient, PropertySource, UserRole, PaymentMethod, TransactionType, SubscriptionPlan, AgentType, ChatOutcome, LeadStatus } from '@prisma/client';
+import { hashPassword } from '../src/utils/password';
 
 const prisma = new PrismaClient();
 
@@ -6,38 +7,44 @@ async function main() {
   console.log('Seeding InmoData IA database...');
 
   // ── Users ──────────────────────────────────────────────────────────────────
+  // Contraseñas demo (scrypt): admin123 / empresa123
+  const adminHash = await hashPassword('admin123');
+  const empresaHash = await hashPassword('empresa123');
+
   const admin = await prisma.user.upsert({
     where: { email: 'admin@inmodata.ia' },
-    update: {},
+    update: { passwordHash: adminHash },
     create: {
       email: 'admin@inmodata.ia',
       name: 'CEO InmoData',
       role: UserRole.ADMIN,
-      passwordHash: '$2b$10$placeholder_hash_change_before_prod',
+      passwordHash: adminHash,
     },
   });
 
   const brokers = await Promise.all([
     prisma.user.upsert({
       where: { email: 'carlos.mendoza@corredor.pe' },
-      update: {},
+      update: { passwordHash: empresaHash },
       create: {
         email: 'carlos.mendoza@corredor.pe',
         name: 'Carlos Mendoza',
         phone: '999000001',
         role: UserRole.BROKER,
         districtOfInterest: 'Miraflores',
+        passwordHash: empresaHash,
       },
     }),
     prisma.user.upsert({
       where: { email: 'sofia.rios@nexo.pe' },
-      update: {},
+      update: { passwordHash: empresaHash },
       create: {
         email: 'sofia.rios@nexo.pe',
         name: 'Sofía Ríos Paredes',
         phone: '999000002',
         role: UserRole.BROKER,
         districtOfInterest: 'Jesús María',
+        passwordHash: empresaHash,
       },
     }),
   ]);

@@ -18,15 +18,71 @@ api.interceptors.request.use((config) => {
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
-export async function login(email: string, password: string) {
+export interface AuthResult {
+  token: string;
+  role: string;
+  name: string | null;
+  hasSubscription: boolean;
+}
+
+export async function login(email: string, password: string): Promise<AuthResult> {
   // Use absolute URL in production so Vite preview proxy is bypassed
   const { data } = await axios.post(`${BACKEND_ORIGIN}/auth/login`, { email, password });
   localStorage.setItem('inmodata_token', data.token);
-  return data as { token: string; role: string; name: string };
+  return data as AuthResult;
+}
+
+export async function register(input: {
+  name: string; email: string; password: string; accountType: 'USER' | 'COMPANY';
+}): Promise<AuthResult> {
+  const { data } = await axios.post(`${BACKEND_ORIGIN}/auth/register`, input);
+  localStorage.setItem('inmodata_token', data.token);
+  return data as AuthResult;
+}
+
+export interface MeResult {
+  user: { id: string; name: string | null; email: string | null; phone: string | null; role: string; createdAt: string };
+  hasSubscription: boolean;
+  subscription: SubscriptionRecord | null;
+}
+
+export async function fetchMe(): Promise<MeResult> {
+  const token = localStorage.getItem('inmodata_token');
+  const { data } = await axios.get(`${BACKEND_ORIGIN}/auth/me`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  return data;
 }
 
 export function logout() {
   localStorage.removeItem('inmodata_token');
+  localStorage.removeItem('inmodata_role');
+  localStorage.removeItem('inmodata_name');
+}
+
+// ── Planes y suscripción propia ─────────────────────────────────────────────────
+
+export interface SubscriptionRecord {
+  id: string; userId: string; plan: string; status: string;
+  mrrSOL: number; startedAt: string; endsAt: string | null;
+  transactions?: Array<{ id: string; amountSOL: number; createdAt: string; clientName: string }>;
+}
+
+export async function fetchMySubscription(): Promise<{ subscription: SubscriptionRecord | null; plan: unknown }> {
+  const { data } = await api.get('/subscriptions/me');
+  return data;
+}
+
+export async function subscribe(plan: string, card: { number: string; name?: string; exp?: string; cvv?: string }) {
+  const { data } = await api.post('/subscriptions/subscribe', { plan, card });
+  return data;
+}
+
+export async function updateMyProfile(input: {
+  name?: string; email?: string; phone?: string; password?: string;
+}) {
+  const { data } = await api.patch('/users/me', input);
+  return data;
 }
 
 // ── Metrics ───────────────────────────────────────────────────────────────────

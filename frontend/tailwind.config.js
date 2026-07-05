@@ -41,11 +41,16 @@ export default {
       animation: {
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         fadeIn: 'fadeIn 0.3s ease',
+        'slide-in': 'slideIn 0.25s ease-out',
       },
       keyframes: {
         fadeIn: {
           from: { opacity: '0', transform: 'translateY(10px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
+        },
+        slideIn: {
+          from: { transform: 'translateX(100%)' },
+          to: { transform: 'translateX(0)' },
         },
       },
     },

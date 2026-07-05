@@ -13,6 +13,7 @@ import metricsRoutes from './routes/metrics';
 import scrapingRoutes from './routes/scraping';
 import trainingRoutes from './routes/training';
 import exchangeRoutes from './routes/exchange';
+import authRoutes from './routes/auth';
 
 export const prisma = new PrismaClient();
 
@@ -33,22 +34,8 @@ async function main() {
   // Health check
   app.get('/health', async () => ({ status: 'ok', ts: new Date().toISOString() }));
 
-  // Auth login
-  app.post<{ Body: { email: string; password: string } }>('/auth/login', async (req, reply) => {
-    const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) return reply.status(401).send({ error: 'Invalid credentials' });
-    const expectedPassword = process.env.ADMIN_PASSWORD ?? 'dev-pass';
-    if (password !== expectedPassword) return reply.status(401).send({ error: 'Invalid credentials' });
-    const token = app.jwt.sign({ sub: user.id, role: user.role });
-    return { token, role: user.role, name: user.name };
-  });
-
-  // Auto-login sin contraseña — acceso directo para demo/jurado
-  app.post('/auth/auto', async () => {
-    const token = app.jwt.sign({ sub: 'demo-admin', role: 'ADMIN' }, { expiresIn: '30d' });
-    return { token, role: 'ADMIN', name: 'Admin' };
-  });
+  // Auth (registro, login, me) — password real con scrypt
+  await app.register(authRoutes, { prefix: '/auth' });
 
   await app.register(propertiesRoutes,    { prefix: '/api/properties' });
   await app.register(usersRoutes,         { prefix: '/api/users' });

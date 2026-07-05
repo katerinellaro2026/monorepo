@@ -1,7 +1,15 @@
 import { FastifyPluginAsync } from 'fastify';
 import { prisma } from '../index';
-import { requireAdmin } from '../middleware/auth';
+import { requireAdmin, requireAuth, JwtPayload } from '../middleware/auth';
+import { hashPassword } from '../utils/password';
 import { z } from 'zod';
+
+const UpdateMeSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  password: z.string().min(6).optional(),
+});
 
 const UpsertUserSchema = z.object({
   name: z.string().optional(),
@@ -15,6 +23,36 @@ const UpsertUserSchema = z.object({
 });
 
 const usersRoutes: FastifyPluginAsync = async (app) => {
+  // ── Perfil propio (cualquier usuario autenticado) ────────────────────────────
+  app.patch('/me', { preHandler: requireAuth }, async (req, reply) => {
+    const payload = req.user as JwtPayload;
+    const parsed = UpdateMeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ error: 'Datos inválidos' });
+    }
+    const { name, email, phone, password } = parsed.data;
+
+    // Verificar que el email no esté tomado por otro usuario
+    if (email) {
+      const other = await prisma.user.findUnique({ where: { email } });
+      if (other && other.id !== payload.sub) {
+        return reply.status(409).send({ error: 'Ese correo ya está en uso' });
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id: payload.sub },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(email !== undefined && { email }),
+        ...(phone !== undefined && { phone }),
+        ...(password ? { passwordHash: await hashPassword(password) } : {}),
+      },
+      select: { id: true, name: true, email: true, phone: true, role: true },
+    });
+    return user;
+  });
+
   app.get('/', { preHandler: requireAdmin }, async (req) => {
     const { role, district, limit = '50', offset = '0' } = req.query as Record<string, string>;
     return prisma.user.findMany({
