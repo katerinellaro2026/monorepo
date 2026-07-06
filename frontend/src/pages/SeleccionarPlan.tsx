@@ -9,17 +9,24 @@ export default function SeleccionarPlan() {
   const role = localStorage.getItem('inmodata_role') ?? 'BUYER';
   const plans = getPlansForRole(role);
 
-  // Plan actualmente activo (solo si hay una suscripción vigente)
-  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
+  // Plan actualmente activo — se inicializa síncrono desde caché para evitar
+  // el parpadeo "Elegir" → "Plan actual", y se revalida en segundo plano.
+  const [currentPlan, setCurrentPlan] = useState<string | null>(
+    () => localStorage.getItem('inmodata_plan')
+  );
 
   useEffect(() => {
     fetchMySubscription()
       .then((r) => {
         if (r.subscription && r.subscription.status === 'ACTIVE') {
           setCurrentPlan(r.subscription.plan);
+          localStorage.setItem('inmodata_plan', r.subscription.plan);
+        } else {
+          setCurrentPlan(null);
+          localStorage.removeItem('inmodata_plan');
         }
       })
-      .catch(() => setCurrentPlan(null));
+      .catch(() => { /* mantiene el valor cacheado */ });
   }, []);
 
   function handleLogout() {

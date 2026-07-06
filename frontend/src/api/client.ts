@@ -58,6 +58,7 @@ export function logout() {
   localStorage.removeItem('inmodata_token');
   localStorage.removeItem('inmodata_role');
   localStorage.removeItem('inmodata_name');
+  localStorage.removeItem('inmodata_plan');
 }
 
 // ── Planes y suscripción propia ─────────────────────────────────────────────────

@@ -16,7 +16,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchMe()
-      .then(setMe)
+      .then((r) => {
+        setMe(r);
+        // Cachea el plan activo para render instantáneo en /seleccionar-plan
+        if (r.subscription && r.subscription.status === 'ACTIVE') {
+          localStorage.setItem('inmodata_plan', r.subscription.plan);
+        } else {
+          localStorage.removeItem('inmodata_plan');
+        }
+      })
       .catch(() => setMe(null))
       .finally(() => setLoading(false));
   }, []);

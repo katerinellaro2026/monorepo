@@ -36,6 +36,7 @@ export default function Checkout() {
     setLoading(true);
     try {
       await subscribe(planKey, { number, name: cardName, exp, cvv });
+      localStorage.setItem('inmodata_plan', planKey);
       navigate('/mi-suscripcion');
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 402) {

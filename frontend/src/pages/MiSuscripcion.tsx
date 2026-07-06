@@ -18,7 +18,14 @@ export default function MiSuscripcion() {
 
   useEffect(() => {
     fetchMySubscription()
-      .then((r) => setSub(r.subscription))
+      .then((r) => {
+        setSub(r.subscription);
+        if (r.subscription && r.subscription.status === 'ACTIVE') {
+          localStorage.setItem('inmodata_plan', r.subscription.plan);
+        } else {
+          localStorage.removeItem('inmodata_plan');
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
