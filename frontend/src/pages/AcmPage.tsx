@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, FileText, Building2, Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { fetchAcm } from '@/api/client';
 
 const DISTRICTS = ['Lince', 'Jesús María', 'Miraflores'];
@@ -30,78 +32,115 @@ export default function AcmPage() {
     if (!data) return;
     const fmtUsd = (n: number) => 'US$ ' + n.toLocaleString('en-US');
     const fmtSol = (n: number) => 'S/ ' + n.toLocaleString('es-PE');
-    const rows = data.comparables.map((c) => `
-      <tr>
-        <td>${c.address}</td>
-        <td style="text-align:right">${fmtUsd(c.priceUSD)}</td>
-        <td style="text-align:right">${c.areaSqm ?? '—'} m²</td>
-        <td style="text-align:right">${c.pricePerSqmSOL ? fmtSol(c.pricePerSqmSOL) : '—'}</td>
-        <td>${c.source}</td>
-      </tr>`).join('');
-    const bcrp = data.bcrp
-      ? `<ul>
-           <li>Sector: <b>${data.bcrp.sector === 'altos' ? 'Ingresos altos' : 'Ingresos medios'}</b></li>
-           <li>Precio venta: <b>US$ ${data.bcrp.salePriceUsdPerSqm}/m²</b></li>
-           <li>Alquiler mensual: <b>US$ ${data.bcrp.monthlyRentUsdPerSqm}/m²</b></li>
-           <li>PER: <b>${data.bcrp.per} años</b></li>
-         </ul>`
-      : '<p>Sin datos BCRP para este distrito.</p>';
 
-    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
-      <title>ACM ${data.district} — InmoData IA</title>
-      <style>
-        * { font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1f2e; }
-        body { padding: 32px 40px; max-width: 800px; margin: 0 auto; }
-        h1 { font-size: 22px; margin: 0 0 2px; }
-        .sub { color: #667; font-size: 12px; margin: 0 0 20px; }
-        .brand { color: #6366f1; font-weight: 800; letter-spacing: .5px; font-size: 13px; }
-        .val { display: flex; gap: 12px; margin: 14px 0 20px; }
-        .val div { flex: 1; border: 1px solid #e2e6ef; border-radius: 10px; padding: 12px; text-align: center; }
-        .val .mid { background: #eef0ff; border-color: #c7cbff; }
-        .val small { color: #889; font-size: 10px; text-transform: uppercase; display:block; margin-bottom:4px; }
-        .val b { font-size: 18px; }
-        h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #667; margin: 22px 0 8px; }
-        ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
-        table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
-        th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eef0f4; }
-        th { color: #889; font-size: 9.5px; text-transform: uppercase; }
-        .foot { margin-top: 24px; color: #99a; font-size: 10px; }
-      </style></head><body>
-        <div class="brand">INMODATA IA</div>
-        <h1>Reporte ACM — ${data.district}</h1>
-        <p class="sub">Análisis Comparativo de Mercado · ${data.areaSqm} m² · generado ${new Date(data.generatedAt).toLocaleString('es-PE')}</p>
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const M = 40;               // margen izquierdo
+    const W = doc.internal.pageSize.getWidth();
+    let y = 48;
 
-        <h2>Valuación estimada</h2>
-        <div class="val">
-          <div><small>Mínimo</small><b>${fmtUsd(data.valuation.low)}</b></div>
-          <div class="mid"><small>Referencia</small><b>${fmtUsd(data.valuation.mid)}</b></div>
-          <div><small>Máximo</small><b>${fmtUsd(data.valuation.high)}</b></div>
-        </div>
+    // Marca + título
+    doc.setTextColor(99, 102, 241);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('INMODATA IA', M, y);
+    y += 22;
+    doc.setTextColor(26, 31, 46);
+    doc.setFontSize(20);
+    doc.text(`Reporte ACM — ${data.district}`, M, y);
+    y += 16;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(110, 120, 140);
+    doc.text(
+      `Análisis Comparativo de Mercado · ${data.areaSqm} m² · generado ${new Date(data.generatedAt).toLocaleString('es-PE')}`,
+      M, y
+    );
+    y += 26;
 
-        <h2>Referencia BCRP (IVT 2025)</h2>
-        ${bcrp}
+    // Valuación (3 tarjetas)
+    const sectionTitle = (t: string) => {
+      doc.setTextColor(110, 120, 140);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.text(t.toUpperCase(), M, y);
+      y += 14;
+      doc.setTextColor(26, 31, 46);
+      doc.setFont('helvetica', 'normal');
+    };
 
-        <h2>Mercado (portales)</h2>
-        <ul>
-          <li>Comparables analizados: <b>${data.market.comparablesCount}</b></li>
-          <li>Precio/m² promedio: <b>${fmtSol(data.market.avgPricePerSqmSOL)}</b> (${fmtUsd(data.market.avgPricePerSqmUSD)})</li>
-        </ul>
+    sectionTitle('Valuación estimada');
+    const cardW = (W - M * 2 - 20) / 3;
+    const cards = [
+      { label: 'Mínimo', value: fmtUsd(data.valuation.low), hi: false },
+      { label: 'Referencia', value: fmtUsd(data.valuation.mid), hi: true },
+      { label: 'Máximo', value: fmtUsd(data.valuation.high), hi: false },
+    ];
+    cards.forEach((c, i) => {
+      const x = M + i * (cardW + 10);
+      if (c.hi) { doc.setFillColor(238, 240, 255); doc.setDrawColor(199, 203, 255); }
+      else { doc.setFillColor(248, 249, 252); doc.setDrawColor(226, 230, 239); }
+      doc.roundedRect(x, y, cardW, 46, 6, 6, 'FD');
+      doc.setFontSize(8);
+      doc.setTextColor(130, 140, 160);
+      doc.text(c.label.toUpperCase(), x + cardW / 2, y + 16, { align: 'center' });
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(26, 31, 46);
+      doc.text(c.value, x + cardW / 2, y + 34, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+    });
+    y += 66;
 
-        <h2>Comparables en ${data.district}</h2>
-        <table>
-          <thead><tr><th>Dirección</th><th style="text-align:right">Precio</th><th style="text-align:right">Área</th><th style="text-align:right">S//m²</th><th>Fuente</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan="5">Sin comparables en base de datos.</td></tr>'}</tbody>
-        </table>
+    // BCRP
+    sectionTitle('Referencia BCRP (IVT 2025)');
+    doc.setFontSize(11);
+    doc.setTextColor(50, 60, 80);
+    if (data.bcrp) {
+      const lines = [
+        `• Sector: ${data.bcrp.sector === 'altos' ? 'Ingresos altos' : 'Ingresos medios'}`,
+        `• Precio de venta: US$ ${data.bcrp.salePriceUsdPerSqm}/m²`,
+        `• Alquiler mensual: US$ ${data.bcrp.monthlyRentUsdPerSqm}/m²`,
+        `• PER: ${data.bcrp.per} años`,
+      ];
+      lines.forEach((l) => { doc.text(l, M, y); y += 15; });
+    } else {
+      doc.text('Sin datos BCRP para este distrito.', M, y); y += 15;
+    }
+    y += 10;
 
-        <p class="foot">${data.source}</p>
-      </body></html>`;
+    // Mercado
+    sectionTitle('Mercado (portales)');
+    doc.setFontSize(11);
+    doc.setTextColor(50, 60, 80);
+    doc.text(`• Comparables analizados: ${data.market.comparablesCount}`, M, y); y += 15;
+    doc.text(`• Precio/m² promedio: ${fmtSol(data.market.avgPricePerSqmSOL)} (${fmtUsd(data.market.avgPricePerSqmUSD)})`, M, y); y += 22;
 
-    const w = window.open('', '_blank');
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+    // Tabla de comparables
+    autoTable(doc, {
+      startY: y,
+      head: [['Dirección', 'Precio', 'Área', 'S//m²', 'Fuente']],
+      body: data.comparables.length
+        ? data.comparables.map((c) => [
+            c.address,
+            fmtUsd(c.priceUSD),
+            c.areaSqm ? `${c.areaSqm} m²` : '—',
+            c.pricePerSqmSOL ? fmtSol(c.pricePerSqmSOL) : '—',
+            c.source,
+          ])
+        : [['Sin comparables en base de datos.', '', '', '', '']],
+      styles: { fontSize: 9, cellPadding: 5, textColor: [40, 48, 66] },
+      headStyles: { fillColor: [99, 102, 241], textColor: 255, fontSize: 8.5 },
+      alternateRowStyles: { fillColor: [248, 249, 252] },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } },
+      margin: { left: M, right: M },
+    });
+
+    const endY = (doc as any).lastAutoTable?.finalY ?? y;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 160, 180);
+    doc.text(data.source, M, endY + 20);
+
+    doc.save(`ACM_${data.district.replace(/\s+/g, '_')}_${data.areaSqm}m2.pdf`);
   }
 
   return (
@@ -145,6 +184,7 @@ export default function AcmPage() {
             className="flex items-center gap-1.5 bg-bg-surface border border-border-subtle hover:border-indigo/50 disabled:opacity-40 text-text-secondary font-semibold text-[12px] rounded-[10px] px-4 py-2 transition-all"
           >
             <Download size={14} /> Descargar PDF
+
           </button>
         </div>
 
