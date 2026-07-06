@@ -1,8 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Home, Loader2, CreditCard, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Home, Loader2, CreditCard, ArrowLeft } from 'lucide-react';
 import { subscribe } from '@/api/client';
-import { getPlanDef, TEST_CARDS, ROLE_LABEL } from '@/data/plans';
+import { getPlanDef, ROLE_LABEL } from '@/data/plans';
 import axios from 'axios';
 
 export default function Checkout() {
@@ -70,13 +70,9 @@ export default function Checkout() {
         <div className="grid md:grid-cols-[1fr_320px] gap-6">
           {/* Formulario de pago */}
           <div className="bg-bg-card rounded-card border border-border-subtle p-6">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center gap-2 mb-5">
               <CreditCard size={16} className="text-indigo" />
               <h2 className="text-[15px] font-semibold text-text-secondary">Datos de pago</h2>
-            </div>
-            <div className="flex items-center gap-1.5 text-[10.5px] text-amber mb-5">
-              <ShieldCheck size={12} />
-              Pasarela de demostración — no se cobra dinero real.
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -150,24 +146,6 @@ export default function Checkout() {
                 {loading ? 'Procesando...' : `Pagar S/ ${plan.priceSOL} y suscribirme`}
               </button>
             </form>
-
-            {/* Tarjetas de prueba */}
-            <div className="mt-5 pt-4 border-t border-border-subtle">
-              <div className="text-[10px] text-text-faint uppercase tracking-wide mb-2">Tarjetas de prueba válidas</div>
-              <div className="space-y-1.5">
-                {TEST_CARDS.map((c) => (
-                  <button
-                    key={c.label}
-                    type="button"
-                    onClick={() => setNumber(c.label)}
-                    className="flex items-center justify-between w-full text-left px-2.5 py-1.5 rounded-lg bg-bg-surface hover:bg-bg-elevated transition-colors"
-                  >
-                    <span className="font-mono text-[11px] text-text-secondary">{c.label}</span>
-                    <span className="text-[9px] text-text-ghost">{c.brand}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* Resumen del plan */}

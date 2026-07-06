@@ -89,10 +89,3 @@ export const ROLE_LABEL: Record<string, string> = {
   BROKER: 'Empresa',
   ADMIN: 'Administrador',
 };
-
-// Tarjetas de prueba válidas (mostrar como ayuda en el checkout)
-export const TEST_CARDS = [
-  { label: '4242 4242 4242 4242', brand: 'Visa' },
-  { label: '5555 5555 5555 4444', brand: 'Mastercard' },
-  { label: '3782 822463 10005', brand: 'Amex' },
-];
