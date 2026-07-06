@@ -41,16 +41,32 @@ export default {
       animation: {
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         fadeIn: 'fadeIn 0.3s ease',
+        fadeUp: 'fadeUp 0.6s ease both',
         'slide-in': 'slideIn 0.25s ease-out',
+        float: 'float 6s ease-in-out infinite',
+        'float-slow': 'float 9s ease-in-out infinite',
+        'glow-pulse': 'glowPulse 4s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
           from: { opacity: '0', transform: 'translateY(10px)' },
           to: { opacity: '1', transform: 'translateY(0)' },
         },
+        fadeUp: {
+          from: { opacity: '0', transform: 'translateY(24px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
         slideIn: {
           from: { transform: 'translateX(100%)' },
           to: { transform: 'translateX(0)' },
+        },
+        float: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-12px)' },
+        },
+        glowPulse: {
+          '0%, 100%': { opacity: '0.35' },
+          '50%': { opacity: '0.6' },
         },
       },
     },
