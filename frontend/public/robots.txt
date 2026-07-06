@@ -27,5 +27,4 @@ Disallow: /comparador
 Disallow: /alertas
 Disallow: /api-access
 
-# Reemplaza el dominio por el de producción real
-Sitemap: https://inmodata-ia.up.railway.app/sitemap.xml
+Sitemap: https://frontend-production-f097.up.railway.app/sitemap.xml
