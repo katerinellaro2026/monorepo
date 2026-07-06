@@ -1,0 +1,31 @@
+# InmoData IA — robots.txt
+User-agent: *
+
+# Páginas públicas indexables
+Allow: /$
+Allow: /login
+Allow: /register
+Allow: /chat
+
+# Áreas privadas (requieren sesión) — no indexar
+Disallow: /command-center
+Disallow: /admin-suscripciones
+Disallow: /pro-dashboard
+Disallow: /plan-estrategico
+Disallow: /mapa-procesos
+Disallow: /simulador-bsc
+Disallow: /estructura-ia
+Disallow: /cultura-organizacional
+Disallow: /monitor-ia
+Disallow: /mi-suscripcion
+Disallow: /mi-perfil
+Disallow: /seleccionar-plan
+Disallow: /checkout
+Disallow: /leads
+Disallow: /acm
+Disallow: /comparador
+Disallow: /alertas
+Disallow: /api-access
+
+# Reemplaza el dominio por el de producción real
+Sitemap: https://inmodata-ia.up.railway.app/sitemap.xml
