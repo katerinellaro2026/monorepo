@@ -6,7 +6,11 @@ import SeleccionarPlan from '@/pages/SeleccionarPlan';
 import Checkout from '@/pages/Checkout';
 import MiSuscripcion from '@/pages/MiSuscripcion';
 import MiPerfil from '@/pages/MiPerfil';
-import FeaturePlaceholder from '@/pages/FeaturePlaceholder';
+import LeadsPage from '@/pages/LeadsPage';
+import AcmPage from '@/pages/AcmPage';
+import ComparadorPage from '@/pages/ComparadorPage';
+import AlertasPage from '@/pages/AlertasPage';
+import ApiAccessPage from '@/pages/ApiAccessPage';
 import PublicChat from '@/pages/PublicChat';
 import CommandCenter from '@/pages/CommandCenter';
 import ProDashboard from '@/pages/ProDashboard';
@@ -67,8 +71,21 @@ export default function App() {
         <Route path="/mi-perfil" element={
           <PrivateRoute requiredRoles={ALL}><AppLayout><MiPerfil /></AppLayout></PrivateRoute>
         } />
-        <Route path="/feature/:key" element={
-          <PrivateRoute requiredRoles={CLIENT}><AppLayout><FeaturePlaceholder /></AppLayout></PrivateRoute>
+        {/* Funciones habilitadas por plan */}
+        <Route path="/leads" element={
+          <PrivateRoute requiredRoles={CLIENT}><AppLayout><LeadsPage /></AppLayout></PrivateRoute>
+        } />
+        <Route path="/acm" element={
+          <PrivateRoute requiredRoles={CLIENT}><AppLayout><AcmPage /></AppLayout></PrivateRoute>
+        } />
+        <Route path="/comparador" element={
+          <PrivateRoute requiredRoles={CLIENT}><AppLayout><ComparadorPage /></AppLayout></PrivateRoute>
+        } />
+        <Route path="/alertas" element={
+          <PrivateRoute requiredRoles={CLIENT}><AppLayout><AlertasPage /></AppLayout></PrivateRoute>
+        } />
+        <Route path="/api-access" element={
+          <PrivateRoute requiredRoles={CLIENT}><AppLayout><ApiAccessPage /></AppLayout></PrivateRoute>
         } />
 
         {/* Admin */}

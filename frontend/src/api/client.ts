@@ -85,6 +85,33 @@ export async function updateMyProfile(input: {
   return data;
 }
 
+// ── Funciones por plan (leads, acm, comparador, alertas, api) ───────────────────
+
+export async function fetchLeadsFeature(district?: string) {
+  const { data } = await api.get('/features/leads', { params: district ? { district } : {} });
+  return data;
+}
+
+export async function fetchAcm(district: string, areaSqm: number) {
+  const { data } = await api.get('/features/acm', { params: { district, areaSqm } });
+  return data;
+}
+
+export async function fetchComparador() {
+  const { data } = await api.get('/features/comparador');
+  return data;
+}
+
+export async function fetchAlertas() {
+  const { data } = await api.get('/features/alertas');
+  return data;
+}
+
+export async function fetchApiAccess() {
+  const { data } = await api.get('/features/api-access');
+  return data;
+}
+
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
 export async function fetchDashboardMetrics(): Promise<DashboardMetrics> {

@@ -14,6 +14,7 @@ import scrapingRoutes from './routes/scraping';
 import trainingRoutes from './routes/training';
 import exchangeRoutes from './routes/exchange';
 import authRoutes from './routes/auth';
+import featuresRoutes from './routes/features';
 
 export const prisma = new PrismaClient();
 
@@ -47,6 +48,7 @@ async function main() {
   await app.register(scrapingRoutes,      { prefix: '/api/scraping' });
   await app.register(trainingRoutes,     { prefix: '/api/training' });
   await app.register(exchangeRoutes,    { prefix: '/api/exchange' });
+  await app.register(featuresRoutes,    { prefix: '/api/features' });
 
   const port = Number(process.env.PORT ?? 3001);
   await app.listen({ port, host: '0.0.0.0' });

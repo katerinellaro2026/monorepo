@@ -15,11 +15,11 @@ interface SidebarProps {
 
 // Menús de cliente habilitados por plan (chat se maneja aparte como panel)
 const FEATURE_MENU: Record<string, { to: string; label: string; icon: React.ReactNode }> = {
-  comparador: { to: '/feature/comparador', label: 'Comparador de precios', icon: <BarChart3 size={18} /> },
-  alertas:    { to: '/feature/alertas',    label: 'Alertas',              icon: <Bell size={18} /> },
-  acm:        { to: '/feature/acm',        label: 'Reportes ACM',         icon: <FileText size={18} /> },
-  leads:      { to: '/feature/leads',      label: 'Leads',                icon: <Users size={18} /> },
-  api:        { to: '/feature/api',        label: 'Acceso API',           icon: <Plug size={18} /> },
+  comparador: { to: '/comparador', label: 'Comparador de precios', icon: <BarChart3 size={18} /> },
+  alertas:    { to: '/alertas',    label: 'Alertas',              icon: <Bell size={18} /> },
+  acm:        { to: '/acm',        label: 'Reportes ACM',         icon: <FileText size={18} /> },
+  leads:      { to: '/leads',      label: 'Leads',                icon: <Users size={18} /> },
+  api:        { to: '/api-access', label: 'Acceso API',           icon: <Plug size={18} /> },
 };
 
 // Dashboards internos — solo ADMIN
