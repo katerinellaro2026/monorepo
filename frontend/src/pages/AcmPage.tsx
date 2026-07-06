@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Loader2, FileText, Building2 } from 'lucide-react';
+import { Loader2, FileText, Building2, Download } from 'lucide-react';
 import { fetchAcm } from '@/api/client';
 
 const DISTRICTS = ['Lince', 'Jesús María', 'Miraflores'];
@@ -25,6 +25,84 @@ export default function AcmPage() {
   }
 
   useEffect(() => { load(district, area); /* eslint-disable-next-line */ }, []);
+
+  function downloadPdf() {
+    if (!data) return;
+    const fmtUsd = (n: number) => 'US$ ' + n.toLocaleString('en-US');
+    const fmtSol = (n: number) => 'S/ ' + n.toLocaleString('es-PE');
+    const rows = data.comparables.map((c) => `
+      <tr>
+        <td>${c.address}</td>
+        <td style="text-align:right">${fmtUsd(c.priceUSD)}</td>
+        <td style="text-align:right">${c.areaSqm ?? '—'} m²</td>
+        <td style="text-align:right">${c.pricePerSqmSOL ? fmtSol(c.pricePerSqmSOL) : '—'}</td>
+        <td>${c.source}</td>
+      </tr>`).join('');
+    const bcrp = data.bcrp
+      ? `<ul>
+           <li>Sector: <b>${data.bcrp.sector === 'altos' ? 'Ingresos altos' : 'Ingresos medios'}</b></li>
+           <li>Precio venta: <b>US$ ${data.bcrp.salePriceUsdPerSqm}/m²</b></li>
+           <li>Alquiler mensual: <b>US$ ${data.bcrp.monthlyRentUsdPerSqm}/m²</b></li>
+           <li>PER: <b>${data.bcrp.per} años</b></li>
+         </ul>`
+      : '<p>Sin datos BCRP para este distrito.</p>';
+
+    const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+      <title>ACM ${data.district} — InmoData IA</title>
+      <style>
+        * { font-family: -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1f2e; }
+        body { padding: 32px 40px; max-width: 800px; margin: 0 auto; }
+        h1 { font-size: 22px; margin: 0 0 2px; }
+        .sub { color: #667; font-size: 12px; margin: 0 0 20px; }
+        .brand { color: #6366f1; font-weight: 800; letter-spacing: .5px; font-size: 13px; }
+        .val { display: flex; gap: 12px; margin: 14px 0 20px; }
+        .val div { flex: 1; border: 1px solid #e2e6ef; border-radius: 10px; padding: 12px; text-align: center; }
+        .val .mid { background: #eef0ff; border-color: #c7cbff; }
+        .val small { color: #889; font-size: 10px; text-transform: uppercase; display:block; margin-bottom:4px; }
+        .val b { font-size: 18px; }
+        h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: #667; margin: 22px 0 8px; }
+        ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+        table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin-top: 6px; }
+        th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #eef0f4; }
+        th { color: #889; font-size: 9.5px; text-transform: uppercase; }
+        .foot { margin-top: 24px; color: #99a; font-size: 10px; }
+      </style></head><body>
+        <div class="brand">INMODATA IA</div>
+        <h1>Reporte ACM — ${data.district}</h1>
+        <p class="sub">Análisis Comparativo de Mercado · ${data.areaSqm} m² · generado ${new Date(data.generatedAt).toLocaleString('es-PE')}</p>
+
+        <h2>Valuación estimada</h2>
+        <div class="val">
+          <div><small>Mínimo</small><b>${fmtUsd(data.valuation.low)}</b></div>
+          <div class="mid"><small>Referencia</small><b>${fmtUsd(data.valuation.mid)}</b></div>
+          <div><small>Máximo</small><b>${fmtUsd(data.valuation.high)}</b></div>
+        </div>
+
+        <h2>Referencia BCRP (IVT 2025)</h2>
+        ${bcrp}
+
+        <h2>Mercado (portales)</h2>
+        <ul>
+          <li>Comparables analizados: <b>${data.market.comparablesCount}</b></li>
+          <li>Precio/m² promedio: <b>${fmtSol(data.market.avgPricePerSqmSOL)}</b> (${fmtUsd(data.market.avgPricePerSqmUSD)})</li>
+        </ul>
+
+        <h2>Comparables en ${data.district}</h2>
+        <table>
+          <thead><tr><th>Dirección</th><th style="text-align:right">Precio</th><th style="text-align:right">Área</th><th style="text-align:right">S//m²</th><th>Fuente</th></tr></thead>
+          <tbody>${rows || '<tr><td colspan="5">Sin comparables en base de datos.</td></tr>'}</tbody>
+        </table>
+
+        <p class="foot">${data.source}</p>
+      </body></html>`;
+
+    const w = window.open('', '_blank');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  }
 
   return (
     <div className="min-h-screen bg-bg-base px-6 py-6">
@@ -60,6 +138,13 @@ export default function AcmPage() {
             className="bg-indigo hover:bg-indigo/85 text-white font-semibold text-[12px] rounded-[10px] px-4 py-2 transition-all"
           >
             Generar reporte
+          </button>
+          <button
+            onClick={downloadPdf}
+            disabled={!data || loading}
+            className="flex items-center gap-1.5 bg-bg-surface border border-border-subtle hover:border-indigo/50 disabled:opacity-40 text-text-secondary font-semibold text-[12px] rounded-[10px] px-4 py-2 transition-all"
+          >
+            <Download size={14} /> Descargar PDF
           </button>
         </div>
 

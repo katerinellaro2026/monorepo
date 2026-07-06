@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Check, LogOut } from 'lucide-react';
+import { Home, Check, LogOut, ArrowLeft } from 'lucide-react';
 import { getPlansForRole, ROLE_LABEL } from '@/data/plans';
 import { logout, fetchMySubscription } from '@/api/client';
 
@@ -48,12 +48,22 @@ export default function SeleccionarPlan() {
               <div className="text-[10px] text-text-faint mt-0.5">Cuenta {ROLE_LABEL[role] ?? role}</div>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-[11px] text-text-ghost hover:text-rose transition-colors"
-          >
-            <LogOut size={14} /> Salir
-          </button>
+          <div className="flex items-center gap-4">
+            {currentPlan && (
+              <button
+                onClick={() => navigate('/mi-suscripcion')}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-text-secondary hover:text-indigo-light transition-colors"
+              >
+                <ArrowLeft size={14} /> Volver al panel
+              </button>
+            )}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-[11px] text-text-ghost hover:text-rose transition-colors"
+            >
+              <LogOut size={14} /> Salir
+            </button>
+          </div>
         </div>
 
         <div className="text-center mb-8">
