@@ -185,7 +185,7 @@ export default function Landing() {
         </section>
 
         {/* Planes */}
-        <section className="max-w-6xl mx-auto px-5 py-14">
+        <section id="planes" className="max-w-6xl mx-auto px-5 py-14 scroll-mt-20">
           <SectionHead eyebrow="Precios" title="Planes para personas y empresas" sub="Elige el plan que se ajuste a ti. Todos incluyen el Chat Tasador con IA." />
           <div className="grid md:grid-cols-2 gap-6">
             <PlanColumn title="Para personas" subtitle="Encuentra y valúa tu próxima propiedad" icon={<Home size={16} />} plans={usuarioPlans} />

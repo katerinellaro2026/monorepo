@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Send, Home, Loader2, Sparkles, Check, ArrowRight, LogIn, CreditCard } from 'lucide-react';
 import { sendChatMessage } from '@/api/client';
 import { getPersona } from '@/data/agentPersonas';
-import { getPlansForRole } from '@/data/plans';
 import type { ChatMessage } from '@/types';
 
 const REGISTER_BENEFITS = [
@@ -229,11 +228,8 @@ export default function ChatInterface({ publicPage = false }: { publicPage?: boo
   );
 }
 
-/* ── CTA de registro / asesor de planes (chat público) ─────────────── */
+/* ── CTA de registro (chat público) ────────────────────────────────── */
 function RegistrationCTA() {
-  const [showPlans, setShowPlans] = useState(false);
-  const plans = getPlansForRole('BUYER');
-
   return (
     <div className="rounded-xl border border-indigo/30 bg-gradient-to-br from-indigo/10 to-violet/5 px-3 py-2.5 mt-1.5">
       <div className="flex items-center gap-2 mb-2">
@@ -253,33 +249,16 @@ function RegistrationCTA() {
         <Link to="/register" className="group flex items-center gap-1.5 bg-indigo hover:bg-indigo/85 text-white font-semibold text-[11px] rounded-lg px-3 py-1.5 transition-all">
           Crear cuenta gratis <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
         </Link>
-        <button
-          onClick={() => setShowPlans((v) => !v)}
+        <a
+          href="/#planes"
           className="flex items-center gap-1.5 bg-bg-card border border-border-subtle hover:border-indigo/50 text-text-secondary font-semibold text-[11px] rounded-lg px-3 py-1.5 transition-all"
         >
-          <CreditCard size={12} /> {showPlans ? 'Ocultar' : 'Ver planes'}
-        </button>
+          <CreditCard size={12} /> Ver planes
+        </a>
         <Link to="/login" className="flex items-center gap-1 text-text-ghost hover:text-text-secondary text-[10.5px] px-1.5 py-1.5 transition-colors">
           <LogIn size={12} /> Ya tengo cuenta
         </Link>
       </div>
-
-      {/* Asesor de planes — detalle de suscripciones */}
-      {showPlans && (
-        <div className="mt-2.5 pt-2.5 border-t border-indigo/20">
-          <div className="grid grid-cols-3 gap-1.5">
-            {plans.map((p) => (
-              <div key={p.key} className={`rounded-lg p-2 border ${p.highlighted ? 'border-indigo bg-indigo/5' : 'border-border-subtle bg-bg-card'}`}>
-                <div className="text-[10.5px] font-bold text-text-primary leading-none">{p.label}</div>
-                <div className="text-[13px] font-black text-text-primary my-1">S/ {p.priceSOL}<span className="text-[8px] text-text-ghost font-normal">/mes</span></div>
-                <Link to="/register" className="block text-center bg-bg-elevated hover:bg-indigo/20 border border-border-subtle text-[9.5px] font-semibold text-text-secondary rounded py-1 transition-all">
-                  Elegir
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
