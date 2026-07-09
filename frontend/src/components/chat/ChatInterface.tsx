@@ -246,16 +246,18 @@ function RegistrationCTA() {
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
-        <Link to="/register" className="group flex items-center gap-1.5 bg-indigo hover:bg-indigo/85 text-white font-semibold text-[11px] rounded-lg px-3 py-1.5 transition-all">
+        <Link to="/register" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-1.5 bg-indigo hover:bg-indigo/85 text-white font-semibold text-[11px] rounded-lg px-3 py-1.5 transition-all">
           Crear cuenta gratis <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
         </Link>
         <a
           href="/#planes"
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center gap-1.5 bg-bg-card border border-border-subtle hover:border-indigo/50 text-text-secondary font-semibold text-[11px] rounded-lg px-3 py-1.5 transition-all"
         >
           <CreditCard size={12} /> Ver planes
         </a>
-        <Link to="/login" className="flex items-center gap-1 text-text-ghost hover:text-text-secondary text-[10.5px] px-1.5 py-1.5 transition-colors">
+        <Link to="/login" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-text-ghost hover:text-text-secondary text-[10.5px] px-1.5 py-1.5 transition-colors">
           <LogIn size={12} /> Ya tengo cuenta
         </Link>
       </div>
