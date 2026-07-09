@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Home, MessageSquare, BarChart3, FileText, Users, Check, MapPin,
@@ -34,6 +35,23 @@ export default function Landing() {
   const authed = isAuthed();
   const usuarioPlans = getPlansForRole('BUYER');
   const empresaPlans = getPlansForRole('BROKER');
+
+  // Scroll al ancla (#planes) tras el render de la SPA — el navegador no puede
+  // hacerlo solo porque el elemento aún no existe al cargar.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    let tries = 0;
+    const tryScroll = () => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (tries++ < 10) {
+        setTimeout(tryScroll, 100);
+      }
+    };
+    setTimeout(tryScroll, 80);
+  }, []);
 
   return (
     <div className="min-h-screen bg-bg-base text-text-secondary overflow-x-hidden">
