@@ -20,6 +20,7 @@ import MapaProcesos from '@/pages/MapaProcesos';
 import SimuladorBSC from '@/pages/SimuladorBSC';
 import EstructuraIA from '@/pages/EstructuraIA';
 import CulturaOrganizacional from '@/pages/CulturaOrganizacional';
+import CadenaDeValor from '@/pages/CadenaDeValor';
 import MonitorIA from '@/pages/MonitorIA';
 import AdminSuscripciones from '@/pages/AdminSuscripciones';
 
@@ -114,6 +115,9 @@ export default function App() {
         } />
         <Route path="/cultura-organizacional" element={
           <PrivateRoute requiredRoles={ADMIN}><AppLayout><CulturaOrganizacional /></AppLayout></PrivateRoute>
+        } />
+        <Route path="/cadena-valor" element={
+          <PrivateRoute requiredRoles={ADMIN}><AppLayout><CadenaDeValor /></AppLayout></PrivateRoute>
         } />
         <Route path="/monitor-ia" element={
           <PrivateRoute requiredRoles={ADMIN}><AppLayout><MonitorIA /></AppLayout></PrivateRoute>

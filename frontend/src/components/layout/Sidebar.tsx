@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, MessageSquare, BarChart3, Home, LogOut, Map, GitFork,
   Activity, Network, Users, Terminal, CreditCard, User as UserIcon, Bell,
-  FileText, Plug,
+  FileText, Plug, Workflow,
 } from 'lucide-react';
 import { logout } from '@/api/client';
 import { ROLE_LABEL } from '@/data/plans';
@@ -32,6 +32,7 @@ const ADMIN_ITEMS = [
   { to: '/simulador-bsc',          icon: <Activity size={18} />,        label: 'Métricas & Simulador' },
   { to: '/estructura-ia',          icon: <Network size={18} />,         label: 'Estructura IA' },
   { to: '/cultura-organizacional', icon: <Users size={18} />,           label: 'Cultura Organizacional' },
+  { to: '/cadena-valor',           icon: <Workflow size={18} />,        label: 'Cadena de Valor' },
   { to: '/monitor-ia',             icon: <Terminal size={18} />,        label: 'Monitor IA — Logs' },
 ];
 
