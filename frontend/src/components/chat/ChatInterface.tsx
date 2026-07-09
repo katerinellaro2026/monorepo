@@ -6,8 +6,6 @@ import { getPersona } from '@/data/agentPersonas';
 import { getPlansForRole } from '@/data/plans';
 import type { ChatMessage } from '@/types';
 
-const isAnonymous = () => !localStorage.getItem('inmodata_token');
-
 const REGISTER_BENEFITS = [
   'Comparador de precios entre distritos',
   'Alertas de nuevas propiedades en tu zona',
@@ -19,6 +17,7 @@ const REGISTER_BENEFITS = [
 function MarkdownText({ text }: { text: string }) {
   const html = text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/_([^_\n]+?)_/g, '<em>$1</em>')
     .replace(/\n/g, '<br />');
   return <span dangerouslySetInnerHTML={{ __html: html }} />;
 }
@@ -40,7 +39,7 @@ function AgentAvatar({ agentKey, size = 28 }: { agentKey?: string | null; size?:
   );
 }
 
-export default function ChatInterface() {
+export default function ChatInterface({ publicPage = false }: { publicPage?: boolean }) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -183,8 +182,8 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {/* CTA de registro — solo anónimo, tras la primera respuesta del agente */}
-        {isAnonymous() && messages.length > 1 && !loading && <RegistrationCTA />}
+        {/* CTA de registro — solo en el chat público, tras la respuesta del agente */}
+        {publicPage && messages.length > 1 && !loading && <RegistrationCTA />}
 
         <div ref={bottomRef} />
       </div>
