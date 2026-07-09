@@ -1,8 +1,20 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Home, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Send, Home, Loader2, Sparkles, Check, ArrowRight, LogIn, CreditCard } from 'lucide-react';
 import { sendChatMessage } from '@/api/client';
 import { getPersona } from '@/data/agentPersonas';
+import { getPlansForRole } from '@/data/plans';
 import type { ChatMessage } from '@/types';
+
+const isAnonymous = () => !localStorage.getItem('inmodata_token');
+
+const REGISTER_BENEFITS = [
+  'Comparador de precios entre distritos',
+  'Alertas de nuevas propiedades en tu zona',
+  'Reportes ACM con valuación y comparables',
+  'Descarga de reportes en PDF',
+  'Historial de tus consultas y tasaciones',
+];
 
 function MarkdownText({ text }: { text: string }) {
   const html = text
@@ -171,6 +183,9 @@ export default function ChatInterface() {
           </div>
         )}
 
+        {/* CTA de registro — solo anónimo, tras la primera respuesta del agente */}
+        {isAnonymous() && messages.length > 1 && !loading && <RegistrationCTA />}
+
         <div ref={bottomRef} />
       </div>
 
@@ -211,6 +226,78 @@ export default function ChatInterface() {
           Sofía · Carlos · Diego · Valeria — Equipo InmoData IA · Lima, Perú
         </p>
       </div>
+    </div>
+  );
+}
+
+/* ── CTA de registro / asesor de planes (chat público) ─────────────── */
+function RegistrationCTA() {
+  const [showPlans, setShowPlans] = useState(false);
+  const plans = getPlansForRole('BUYER');
+
+  return (
+    <div className="rounded-2xl border border-indigo/30 bg-gradient-to-br from-indigo/10 to-violet/5 p-4 mt-2">
+      <div className="flex items-start gap-2.5 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-indigo/20 text-indigo-light flex items-center justify-center flex-shrink-0">
+          <Sparkles size={16} />
+        </div>
+        <div>
+          <div className="text-[12.5px] font-bold text-text-primary">¿Te gustó esta consulta? Desbloquea mucho más</div>
+          <div className="text-[10.5px] text-text-ghost">Crea tu cuenta en InmoData IA y accede a herramientas para decidir mejor.</div>
+        </div>
+      </div>
+
+      <ul className="space-y-1.5 mb-3.5">
+        {REGISTER_BENEFITS.map((b) => (
+          <li key={b} className="flex items-start gap-2 text-[11px] text-text-secondary">
+            <Check size={13} className="text-emerald flex-shrink-0 mt-0.5" /> {b}
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Link to="/register" className="group flex items-center gap-1.5 bg-indigo hover:bg-indigo/85 text-white font-semibold text-[11.5px] rounded-[9px] px-3.5 py-2 transition-all">
+          Crear cuenta gratis <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+        <button
+          onClick={() => setShowPlans((v) => !v)}
+          className="flex items-center gap-1.5 bg-bg-card border border-border-subtle hover:border-indigo/50 text-text-secondary font-semibold text-[11.5px] rounded-[9px] px-3.5 py-2 transition-all"
+        >
+          <CreditCard size={13} /> {showPlans ? 'Ocultar planes' : 'Ver planes'}
+        </button>
+        <Link to="/login" className="flex items-center gap-1.5 text-text-ghost hover:text-text-secondary text-[11px] px-2 py-2 transition-colors">
+          <LogIn size={13} /> Ya tengo cuenta
+        </Link>
+      </div>
+
+      {/* Asesor de planes — detalle de suscripciones */}
+      {showPlans && (
+        <div className="mt-3.5 pt-3.5 border-t border-indigo/20">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-indigo-light mb-2.5">Planes para personas</div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {plans.map((p) => (
+              <div key={p.key} className={`rounded-xl p-3 border ${p.highlighted ? 'border-indigo bg-indigo/5' : 'border-border-subtle bg-bg-card'}`}>
+                <div className="flex items-baseline justify-between mb-1">
+                  <span className="text-[11.5px] font-bold text-text-primary">{p.label}</span>
+                  {p.highlighted && <span className="text-[7.5px] font-bold uppercase bg-indigo text-white rounded-full px-1.5 py-0.5">Popular</span>}
+                </div>
+                <div className="text-[15px] font-black text-text-primary mb-1.5">S/ {p.priceSOL}<span className="text-[9px] text-text-ghost font-normal">/mes</span></div>
+                <ul className="space-y-1 mb-2.5">
+                  {p.features.slice(0, 3).map((f, i) => (
+                    <li key={i} className="flex items-start gap-1 text-[9.5px] text-text-ghost leading-tight">
+                      <Check size={10} className="text-emerald flex-shrink-0 mt-0.5" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link to="/register" className="block text-center bg-bg-elevated hover:bg-indigo/20 border border-border-subtle text-[10px] font-semibold text-text-secondary rounded-lg py-1.5 transition-all">
+                  Elegir {p.label}
+                </Link>
+              </div>
+            ))}
+          </div>
+          <p className="text-[9px] text-text-ghost mt-2.5">¿Eres inmobiliaria? También tenemos planes para empresas con leads y reportes ACM ilimitados.</p>
+        </div>
+      )}
     </div>
   );
 }
