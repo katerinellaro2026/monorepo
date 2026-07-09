@@ -1,4 +1,5 @@
 import Header from '@/components/layout/Header';
+import { ChevronRight } from 'lucide-react';
 
 /* ─── Tokens ─────────────────────────────────────────────────────── */
 const C = {
@@ -13,49 +14,50 @@ interface Activity {
   title: string;
   color: string;
   short: string;
+  stat: string;
   points: string[];
 }
 
 const SUPPORT: Activity[] = [
   {
     icon: '🏛️', title: 'Infraestructura de la empresa', color: C.slate,
-    short: 'Plataforma, finanzas y gestión',
+    short: 'Plataforma, finanzas y gestión', stat: 'MRR S/ 2,308',
     points: [
       'Monorepo desplegado en Railway (frontend + backend + scraper)',
-      'Base de datos Supabase (PostgreSQL + pgvector) con datos reales',
-      'Gestión financiera: MRR, suscripciones y transacciones',
+      'Base de datos Supabase (PostgreSQL + pgvector 768 dims)',
+      'Gestión financiera: 4 suscripciones activas → MRR S/ 2,308',
       'Dashboards de dirección: Centro de Comando, Plan Estratégico, BSC',
-      'Seguridad: autenticación JWT, hashing scrypt, control por rol',
+      'Seguridad: JWT + hashing scrypt, control por 3 roles',
     ],
   },
   {
     icon: '👥', title: 'Gestión de recursos humanos', color: C.sky,
-    short: 'Cultura y equipo (humano + IA)',
+    short: 'Cultura y equipo (humano + IA)', stat: '4 agentes IA',
     points: [
-      'Cultura organizacional y valores de la empresa',
-      'Definición de roles de los 4 agentes de IA (Sofía, Carlos, Diego, Valeria)',
-      'Entrenamiento few-shot y ejemplos aprobados por escenario',
+      'Cultura organizacional y 6 valores de la empresa',
+      '4 agentes de IA con roles definidos: Sofía, Carlos, Diego, Valeria',
+      'Entrenamiento few-shot con ejemplos aprobados por escenario',
       'Monitoreo de desempeño: adherencia cultural, precisión y latencia',
     ],
   },
   {
     icon: '⚙️', title: 'Desarrollo de tecnología', color: C.violet,
-    short: 'I+D y arquitectura de IA',
+    short: 'I+D y arquitectura de IA', stat: 'Gemini 2.5',
     points: [
       'Stack: React/Vite, Fastify, Prisma, Gemini 2.5 Flash Lite',
-      'Pipeline de agentes orquestados (triaje → especialista)',
-      'RAG con pgvector sobre propiedades comparables',
+      'Pipeline de 4 agentes orquestados (triaje → especialista)',
+      'RAG con pgvector sobre 105 propiedades comparables',
       'Integración de tipo de cambio USD/PEN (dolar.pe) en tiempo real',
     ],
   },
   {
     icon: '📦', title: 'Aprovisionamiento (compras)', color: C.orange,
-    short: 'Proveedores y fuentes de datos',
+    short: 'Proveedores y fuentes de datos', stat: '2 portales',
     points: [
-      'Contratación de Gemini API (motor de IA)',
+      'Gemini API — costo: US$ 0.10/M tokens entrada, US$ 0.40/M salida',
       'Servicios cloud: Railway (cómputo) y Supabase (datos)',
-      'Fuentes de datos: BCRP IVT 2025 (oficial) y portales',
-      'Scraping de Urbania y Adondevivir como insumo de mercado',
+      'Fuente oficial: BCRP IVT 2025 con 12 distritos de referencia',
+      'Scraping de 2 portales: Adondevivir (61) y Urbania (44)',
     ],
   },
 ];
@@ -63,54 +65,63 @@ const SUPPORT: Activity[] = [
 const PRIMARY: Activity[] = [
   {
     icon: '📥', title: 'Logística de entrada', color: C.indigo,
-    short: 'Captura y normalización de datos',
+    short: 'Captura y normalización de datos', stat: '105 propiedades',
     points: [
-      'Scraping de propiedades en Urbania y Adondevivir',
-      'Ingesta de indicadores oficiales del BCRP (IVT 2025)',
-      'Normalización de precios (detección USD vs SOL, miles/decimales)',
-      'Indexación vectorial (pgvector) de propiedades comparables',
+      '105 propiedades activas indexadas (Lince 41 · Miraflores 34 · J. María 30)',
+      'Ingesta de indicadores oficiales del BCRP (IVT 2025, 12 distritos)',
+      'Normalización de precios: detección USD vs SOL, miles/decimales',
+      'Indexación vectorial (pgvector, 768 dims) para búsqueda de comparables',
     ],
   },
   {
     icon: '🧠', title: 'Operaciones', color: C.teal,
-    short: 'Procesamiento con IA',
+    short: 'Procesamiento con IA', stat: '120 interacciones',
     points: [
-      'Triaje de la consulta y enrutamiento al agente correcto',
-      'Tasación de propiedades contra la referencia BCRP',
-      'Generación de Análisis Comparativo de Mercado (ACM)',
-      'Calificación de leads a partir de la conversación',
+      'Triaje y enrutamiento al agente correcto (4 agentes especializados)',
+      'Tasación vs BCRP: Miraflores US$ 2,400/m², Lince US$ 1,970/m²',
+      'ACM con comparables reales y PER (ej. Miraflores 17.5 años)',
+      '120 interacciones procesadas en 44 sesiones de chat',
     ],
   },
   {
     icon: '📤', title: 'Logística de salida', color: C.violet,
-    short: 'Entrega del servicio',
+    short: 'Entrega del servicio', stat: '10 leads',
     points: [
-      'Chat tasador con respuesta en segundos',
+      'Chat tasador con respuesta en < 2 segundos',
       'Reportes ACM descargables en PDF',
-      'Entrega de leads calificados a los corredores',
-      'Comparador de precios y alertas de propiedades',
+      '10 leads calificados entregados a los corredores',
+      'Comparador de 3 distritos activos y alertas de propiedades',
     ],
   },
   {
     icon: '📣', title: 'Marketing y ventas', color: C.amber,
-    short: 'Captación y conversión',
+    short: 'Captación y conversión', stat: '31 clientes B2C',
     points: [
-      'Landing pública optimizada para SEO + Google Search Console',
-      'Planes de suscripción (Persona y Empresa) con pasarela de pago',
+      'Landing SEO + Google Search Console (sitemap con 4 URLs)',
+      '6 planes: Persona S/ 29–99 · Empresa S/ 150–2,000',
+      '31 usuarios B2C captados y 2 corredores B2B suscritos',
       'CTA de registro dentro del chat gratuito',
-      'Captación de leads B2C que alimentan a los corredores B2B',
     ],
   },
   {
     icon: '🛟', title: 'Servicio', color: C.green,
-    short: 'Postventa y soporte',
+    short: 'Postventa y soporte', stat: 'Monitor IA',
     points: [
       'Soporte B2B a corredores (agente Valeria)',
+      'Monitor IA: 120 logs con tokens y costo por interacción',
       'Gestión de perfil y suscripción del cliente',
-      'Monitor IA: logs, tokens y costos por interacción',
-      'Mejora continua vía entrenamiento de los agentes',
+      'Mejora continua vía entrenamiento few-shot de los agentes',
     ],
   },
+];
+
+const KPIS = [
+  { value: '105', label: 'Propiedades indexadas', color: C.indigo },
+  { value: '3', label: 'Distritos con cobertura', color: C.teal },
+  { value: '4', label: 'Agentes de IA', color: C.violet },
+  { value: '10', label: 'Leads calificados', color: C.amber },
+  { value: '4', label: 'Suscripciones activas', color: C.green },
+  { value: 'S/ 2,308', label: 'MRR actual', color: C.sky },
 ];
 
 /* ─── Componentes ─────────────────────────────────────────────────── */
@@ -119,10 +130,12 @@ function DetailCard({ a }: { a: Activity }) {
     <div className="bg-bg-card rounded-card border border-border-subtle p-4" style={{ borderTop: `2.5px solid ${a.color}` }}>
       <div className="flex items-start gap-2.5 mb-2.5">
         <span className="text-xl flex-shrink-0">{a.icon}</span>
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="text-[12.5px] font-semibold text-text-secondary leading-tight">{a.title}</div>
           <div className="text-[9.5px] mt-0.5" style={{ color: a.color }}>{a.short}</div>
         </div>
+        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+          style={{ background: `${a.color}18`, color: a.color }}>{a.stat}</span>
       </div>
       <ul className="space-y-1.5">
         {a.points.map((p, i) => (
@@ -145,9 +158,6 @@ function SectionTitle({ children, icon }: { children: React.ReactNode; icon?: st
   );
 }
 
-const CHEVRON = 'polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 50%)';
-const CHEVRON_FIRST = 'polygon(0 0, calc(100% - 18px) 0, 100% 50%, calc(100% - 18px) 100%, 0 100%)';
-
 export default function CadenaDeValor() {
   return (
     <div className="min-h-screen bg-bg-base px-6 py-5">
@@ -156,58 +166,76 @@ export default function CadenaDeValor() {
         subtitle="Actividades primarias y de apoyo de InmoData IA que generan margen y ventaja competitiva"
       />
 
-      <p className="text-[12px] text-text-ghost leading-relaxed max-w-3xl mb-2">
+      <p className="text-[12px] text-text-ghost leading-relaxed max-w-3xl mb-5">
         El modelo de Michael Porter descompone la empresa en actividades que crean valor. En InmoData IA,
         las <span className="text-text-secondary font-semibold">actividades primarias</span> transforman los datos
         del mercado en tasaciones y leads, mientras que las <span className="text-text-secondary font-semibold">actividades
-        de apoyo</span> sostienen y potencian todo el proceso. La diferencia entre el valor entregado y el costo
-        de producirlo es el <span className="text-text-secondary font-semibold">margen</span>.
+        de apoyo</span> sostienen todo el proceso. La diferencia entre el valor entregado y el costo de producirlo
+        es el <span className="text-text-secondary font-semibold">margen</span>. Las cifras mostradas son datos reales de la plataforma.
       </p>
+
+      {/* ── KPIs reales ──────────────────────────────────────────── */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-2">
+        {KPIS.map((k) => (
+          <div key={k.label} className="bg-bg-card rounded-card border border-border-subtle p-3 text-center">
+            <div className="text-xl font-black leading-none mb-1" style={{ color: k.color }}>{k.value}</div>
+            <div className="text-[9px] text-text-ghost leading-tight">{k.label}</div>
+          </div>
+        ))}
+      </div>
 
       {/* ── Diagrama ─────────────────────────────────────────────── */}
       <SectionTitle icon="🗺️">Diagrama de la cadena de valor</SectionTitle>
 
       <div className="bg-bg-card/50 border border-border-subtle rounded-card p-4 overflow-x-auto">
-        <div className="min-w-[820px]">
+        <div className="min-w-[860px]">
           {/* Apoyo */}
-          <div className="flex gap-2 mb-2">
-            <div className="w-32 flex-shrink-0 flex items-center justify-center rounded-lg bg-bg-elevated text-[9.5px] font-bold uppercase tracking-wide text-text-deep text-center px-2">
+          <div className="flex gap-2 mb-3">
+            <div className="w-32 flex-shrink-0 flex items-center justify-center rounded-lg bg-bg-elevated text-[9.5px] font-bold uppercase tracking-wide text-text-deep text-center px-2 py-3">
               Actividades de apoyo
             </div>
             <div className="flex-1 space-y-2">
               {SUPPORT.map((a) => (
                 <div key={a.title} className="flex items-center gap-2.5 rounded-lg px-3 py-2"
                   style={{ background: `${a.color}12`, border: `1px solid ${a.color}30` }}>
-                  <span className="text-sm">{a.icon}</span>
+                  <span className="text-sm flex-shrink-0">{a.icon}</span>
                   <span className="text-[11px] font-semibold text-text-secondary w-56 flex-shrink-0">{a.title}</span>
-                  <span className="text-[10px] text-text-ghost truncate">{a.short}</span>
+                  <span className="text-[10px] text-text-ghost flex-1 truncate">{a.short}</span>
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{ background: `${a.color}20`, color: a.color }}>{a.stat}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Primarias + Margen */}
-          <div className="flex gap-2 mt-3">
+          {/* Primarias + Margen (con flechas, sin recortes) */}
+          <div className="flex gap-2 items-stretch">
             <div className="w-32 flex-shrink-0 flex items-center justify-center rounded-lg bg-bg-elevated text-[9.5px] font-bold uppercase tracking-wide text-text-deep text-center px-2">
               Actividades primarias
             </div>
-            <div className="flex-1 flex items-stretch gap-1">
+            <div className="flex-1 flex items-stretch">
               {PRIMARY.map((a, i) => (
-                <div key={a.title}
-                  className="flex-1 flex flex-col items-center justify-center text-center px-4 py-3"
-                  style={{
-                    background: `${a.color}18`,
-                    borderTop: `2px solid ${a.color}`,
-                    clipPath: i === 0 ? CHEVRON_FIRST : CHEVRON,
-                    marginLeft: i === 0 ? 0 : -14,
-                  }}>
-                  <span className="text-base mb-0.5">{a.icon}</span>
-                  <span className="text-[9.5px] font-bold text-text-secondary leading-tight">{a.title}</span>
+                <div key={a.title} className="flex items-stretch flex-1">
+                  <div className="flex-1 flex flex-col items-center justify-center text-center px-2 py-3 rounded-lg"
+                    style={{ background: `${a.color}18`, borderTop: `2.5px solid ${a.color}` }}>
+                    <span className="text-base mb-1">{a.icon}</span>
+                    <span className="text-[9.5px] font-bold text-text-secondary leading-tight">{a.title}</span>
+                    <span className="text-[8.5px] mt-0.5" style={{ color: a.color }}>{a.stat}</span>
+                  </div>
+                  {i < PRIMARY.length - 1 && (
+                    <div className="flex items-center px-0.5 flex-shrink-0">
+                      <ChevronRight size={16} className="text-text-deep" />
+                    </div>
+                  )}
                 </div>
               ))}
+              {/* Flecha a margen */}
+              <div className="flex items-center px-0.5 flex-shrink-0">
+                <ChevronRight size={18} style={{ color: C.violet }} />
+              </div>
               {/* Margen */}
-              <div className="flex flex-col items-center justify-center text-center px-3 py-3 w-24 flex-shrink-0 rounded-r-lg"
-                style={{ background: `linear-gradient(135deg, ${C.indigo}, ${C.violet})`, marginLeft: -14, clipPath: 'polygon(18px 0, 100% 0, 100% 100%, 18px 100%, 0 50%)' }}>
+              <div className="flex flex-col items-center justify-center text-center px-3 py-3 w-24 flex-shrink-0 rounded-lg"
+                style={{ background: `linear-gradient(135deg, ${C.indigo}, ${C.violet})` }}>
                 <span className="text-base mb-0.5">💰</span>
                 <span className="text-[10px] font-black text-white leading-tight">MARGEN</span>
               </div>
@@ -232,9 +260,9 @@ export default function CadenaDeValor() {
       <SectionTitle icon="💰">Margen y ventaja competitiva</SectionTitle>
       <div className="grid md:grid-cols-3 gap-3 mb-8">
         {[
-          { icon: '📊', title: 'Datos oficiales BCRP', desc: 'Tasaciones ancladas a una fuente pública y confiable (IVT 2025), no a estimaciones opacas. Genera confianza y diferenciación.', color: C.teal },
-          { icon: '🤖', title: 'IA conversacional 24/7', desc: 'Cuatro agentes especializados atienden, tasan y califican leads sin costo laboral marginal, con latencia de segundos.', color: C.indigo },
-          { icon: '📉', title: 'Bajo costo marginal', desc: 'El costo por interacción (tokens Gemini) es mínimo frente al valor entregado, lo que sostiene un margen operativo alto y escalable.', color: C.green },
+          { icon: '📊', title: 'Datos oficiales BCRP', desc: 'Tasaciones ancladas a una fuente pública (BCRP IVT 2025, 12 distritos) en lugar de estimaciones opacas. Genera confianza y diferenciación.', color: C.teal },
+          { icon: '🤖', title: 'IA conversacional 24/7', desc: '4 agentes especializados atienden, tasan y califican leads sin costo laboral marginal, con respuesta en < 2 segundos.', color: C.indigo },
+          { icon: '📉', title: 'Costo marginal mínimo', desc: 'Cada consulta cuesta una fracción de centavo (Gemini: US$ 0.10/M entrada, US$ 0.40/M salida) frente a S/ 2,308 de MRR: margen alto y escalable.', color: C.green },
         ].map((m) => (
           <div key={m.title} className="bg-bg-card rounded-card border border-border-subtle p-4" style={{ borderLeft: `3px solid ${m.color}` }}>
             <div className="flex items-center gap-2 mb-1.5">
